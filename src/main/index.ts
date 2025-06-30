@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { createOverlayWindow, getOverlayWindow } from './overlay'
+import { screen } from 'electron'
 
 function createWindow(): void {
   // Create the browser window.
@@ -69,6 +71,67 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+// Overlay IPC handlers
+let overlayContent = 'Overlay'
+let overlayOptions = {
+  opacity: 1,
+  clickThrough: false,
+  width: 600,
+  height: 200,
+  x: undefined as number | undefined,
+  y: undefined as number | undefined,
+  displayId: undefined as number | undefined
+}
+
+ipcMain.on('overlay:show', (_e, opts) => {
+  overlayOptions = { ...overlayOptions, ...opts }
+  const win = createOverlayWindow({ ...overlayOptions, content: overlayContent })
+  win.webContents.send('overlay:update-content', overlayContent)
+})
+ipcMain.on('overlay:hide', () => {
+  const win = getOverlayWindow()
+  if (win) win.close()
+})
+ipcMain.on('overlay:update-content', (_e, content) => {
+  overlayContent = content
+  const win = getOverlayWindow()
+  if (win) win.webContents.send('overlay:update-content', overlayContent)
+})
+ipcMain.on('overlay:move', (_e, { x, y, displayId }) => {
+  overlayOptions = { ...overlayOptions, x, y, displayId }
+  const win = getOverlayWindow()
+  if (win) {
+    if (displayId) {
+      const display = screen.getAllDisplays().find(d => d.id === displayId)
+      if (display) win.setBounds({ x: display.bounds.x + (x ?? 100), y: display.bounds.y + (y ?? 100) })
+    } else {
+      win.setPosition(x ?? 100, y ?? 100)
+    }
+  }
+})
+ipcMain.on('overlay:set-opacity', (_e, opacity) => {
+  overlayOptions.opacity = opacity
+  const win = getOverlayWindow()
+  if (win) win.setOpacity(opacity)
+})
+ipcMain.on('overlay:set-size', (_e, { width, height }) => {
+  overlayOptions = { ...overlayOptions, width, height }
+  const win = getOverlayWindow()
+  if (win) win.setSize(width, height)
+})
+ipcMain.on('overlay:set-click-through', (_e, clickThrough) => {
+  overlayOptions.clickThrough = clickThrough
+  const win = getOverlayWindow()
+  if (win) win.setIgnoreMouseEvents(!!clickThrough, { forward: true })
+})
+
+// Optionally, send overlay state to renderer
+ipcMain.handle('overlay:get-state', () => ({
+  visible: !!getOverlayWindow(),
+  content: overlayContent,
+  ...overlayOptions
+}))
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
