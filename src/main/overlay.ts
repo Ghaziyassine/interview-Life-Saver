@@ -1,5 +1,6 @@
 import { app, BrowserWindow, screen } from 'electron'
 import { join } from 'path'
+import { is } from '@electron-toolkit/utils'
 
 let overlayWindow: BrowserWindow | null = null
 
@@ -47,7 +48,11 @@ export function createOverlayWindow(options: {
     overlayWindow.setIgnoreMouseEvents(true, { forward: true })
   }
 
-  overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    overlayWindow.loadURL(process.env['ELECTRON_RENDERER_URL'].replace(/\/?$/, '/overlay.html'))
+  } else {
+    overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
+  }
 
   if (options.opacity !== undefined) {
     overlayWindow.setOpacity(options.opacity)

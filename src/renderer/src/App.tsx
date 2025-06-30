@@ -42,52 +42,121 @@ function App(): React.JSX.Element {
     setClickThrough(!clickThrough)
   }
 
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
   return (
     <>
       <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-      <div style={{ margin: '2em 0', padding: '1em', border: '1px solid #333', borderRadius: 8 }}>
-        <h2>Overlay Controls</h2>
-        <div>
-          <button onClick={showOverlay} disabled={visible}>Show Overlay</button>
-          <button onClick={hideOverlay} disabled={!visible}>Hide Overlay</button>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <label>Content: <input value={content} onChange={e => setContent(e.target.value)} /></label>
-          <button onClick={updateContent}>Update Content</button>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <label>Opacity: <input type="range" min="0.1" max="1" step="0.05" value={opacity} onChange={changeOpacity} /></label> {opacity}
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <label>Width: <input id="overlay-width" type="number" min="100" max="1920" value={size.width} onChange={changeSize} /></label>
-          <label> Height: <input id="overlay-height" type="number" min="50" max="1080" value={size.height} onChange={changeSize} /></label>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <label><input type="checkbox" checked={clickThrough} onChange={toggleClickThrough} /> Click-Through</label>
-        </div>
+      <div
+        style={{
+          position: 'fixed',
+          top: 32,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: 'rgba(30, 30, 40, 0.85)',
+          borderRadius: 16,
+          boxShadow: '0 4px 32px #0008',
+          padding: '0.5em 1.5em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 18,
+          backdropFilter: 'blur(8px)',
+          border: '1.5px solid #444',
+          minWidth: 420,
+        }}
+      >
+        <button
+          title={visible ? 'Hide Overlay' : 'Show Overlay'}
+          onClick={visible ? hideOverlay : showOverlay}
+          style={{
+            background: visible ? '#2d8cff' : '#444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '0.5em 1em',
+            fontSize: 20,
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+        >
+          {visible ? '🛑' : '▶️'}
+        </button>
+        <input
+          type="text"
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            color: '#fff',
+            border: '1px solid #555',
+            borderRadius: 8,
+            padding: '0.3em 0.7em',
+            fontSize: 16,
+            width: 120,
+          }}
+          placeholder="Overlay text"
+        />
+        <button
+          title="Update Content"
+          onClick={updateContent}
+          style={{
+            background: '#444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '0.5em 1em',
+            fontSize: 18,
+            cursor: 'pointer',
+          }}
+        >💾</button>
+        <label title="Opacity" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 18 }}>🌫️</span>
+          <input
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.05"
+            value={opacity}
+            onChange={changeOpacity}
+            style={{ width: 60 }}
+          />
+        </label>
+        <label title="Width" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 18 }}>↔️</span>
+          <input
+            id="overlay-width"
+            type="number"
+            min="100"
+            max="1920"
+            value={size.width}
+            onChange={changeSize}
+            style={{ width: 60, background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid #555', borderRadius: 8, padding: '0.2em 0.5em' }}
+          />
+        </label>
+        <label title="Height" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 18 }}>↕️</span>
+          <input
+            id="overlay-height"
+            type="number"
+            min="50"
+            max="1080"
+            value={size.height}
+            onChange={changeSize}
+            style={{ width: 60, background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid #555', borderRadius: 8, padding: '0.2em 0.5em' }}
+          />
+        </label>
+        <button
+          title="Toggle Click-Through"
+          onClick={toggleClickThrough}
+          style={{
+            background: clickThrough ? '#2d8cff' : '#444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '0.5em 1em',
+            fontSize: 20,
+            cursor: 'pointer',
+          }}
+        >🖱️🚫</button>
       </div>
     </>
   )
