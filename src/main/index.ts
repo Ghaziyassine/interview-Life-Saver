@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut } from 'elec
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import fetch from 'node-fetch'
 
 // Overlay window logic (merged from overlay.ts)
 let overlayWindow: BrowserWindow | null = null
@@ -239,6 +240,34 @@ ipcMain.on('main:set-click-through', (_e, clickThrough) => {
   if (mainWindowRef) mainWindowRef.setIgnoreMouseEvents(!!clickThrough, { forward: true });
   mainClickThrough = !!clickThrough;
   if (mainWindowRef) mainWindowRef.webContents.send('main:click-through-toggled', mainClickThrough);
+});
+
+// MCP LLM handler
+ipcMain.handle('chatbot:ask-mcp', async (_event, prompt: string) => {
+  try {
+    const res = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen/qwen3-1.7b',
+        messages: [
+          { role: 'system', content: 'Always answer as helpfully as possible.' },
+          { role: 'user', content: prompt }
+        ]
+      })
+    });
+    const data = await res.json();
+    const answer = data?.choices?.[0]?.message?.content || 'No response';
+    return { success: true, answer };
+  } catch (err) {
+    let errorMsg = 'Unknown error';
+    if (err && typeof err === 'object' && 'message' in err) {
+      errorMsg = (err as any).message;
+    } else {
+      errorMsg = String(err);
+    }
+    return { success: false, error: errorMsg };
+  }
 });
 
 // Handle close app from renderer

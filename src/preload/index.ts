@@ -22,10 +22,15 @@ const mainAPI = {
   closeApp: () => ipcRenderer.send('main:close-app'), // Add closeApp method
 }
 
+const chatbotAPI = {
+  askMcp: (prompt) => ipcRenderer.invoke('chatbot:ask-mcp', prompt),
+}
+
 // Custom APIs for renderer
 const api = {
   overlay: overlayAPI,
-  main: mainAPI
+  main: mainAPI,
+  chatbot: chatbotAPI,
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

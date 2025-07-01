@@ -12,7 +12,7 @@ function ChatOverlay() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendPrompt = (e: React.FormEvent) => {
+  const sendPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     const prompt = input.trim();
     if (!prompt) return;
@@ -20,13 +20,29 @@ function ChatOverlay() {
       ...prev,
       { text: prompt, from: 'user' },
     ]);
-    setTimeout(() => {
+    setInput('');
+    try {
+      const res = await window.api?.chatbot?.askMcp?.(prompt);
+      if (res?.success) {
+        setMessages((prev) => [
+          ...prev,
+          { text: res.answer ?? 'No response', from: 'bot' },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { text: res?.error ?? 'Error contacting local LLM', from: 'bot' },
+        ]);
+      }
+    } catch (err) {
+      const errorMsg = (err && typeof err === 'object' && 'message' in err)
+        ? (err as any).message
+        : String(err);
       setMessages((prev) => [
         ...prev,
-        { text: prompt, from: 'bot' }, // echo reply
+        { text: 'Error: ' + errorMsg, from: 'bot' },
       ]);
-    }, 400);
-    setInput('');
+    }
   };
 
   return (

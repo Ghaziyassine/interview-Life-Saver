@@ -8,9 +8,15 @@ declare interface MainAPI {
   closeApp: () => void;
 }
 
+declare interface ChatbotAPI {
+  askMcp: (prompt: string) => Promise<{ success: boolean; answer?: string; error?: string }>;
+
+}
+
 declare interface Window {
   api: {
     main: MainAPI;
     overlay: any;
+    chatbot: ChatbotAPI;
   };
 }
