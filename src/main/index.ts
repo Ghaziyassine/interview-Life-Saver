@@ -1,76 +1,72 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { createOverlayWindow, getOverlayWindow } from './overlay'
-import { screen } from 'electron'
 
-function createWindow(): void {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
-    show: false,
-    autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+// Overlay window logic (merged from overlay.ts)
+let overlayWindow: BrowserWindow | null = null
+function createOverlayWindow(options: {
+  content?: string
+  opacity?: number
+  clickThrough?: boolean
+  width?: number
+  height?: number
+  x?: number
+  y?: number
+  displayId?: number
+} = {}): BrowserWindow {
+  if (overlayWindow) {
+    overlayWindow.close()
+    overlayWindow = null
+  }
+  let display = screen.getPrimaryDisplay()
+  if (options.displayId) {
+    const found = screen.getAllDisplays().find(d => d.id === options.displayId)
+    if (found) display = found
+  }
+  overlayWindow = new BrowserWindow({
+    width: options.width || 600,
+    height: options.height || 200,
+    x: options.x ?? display.bounds.x + 100,
+    y: options.y ?? display.bounds.y + 100,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: !options.clickThrough,
+    resizable: true,
+    hasShadow: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
-
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
-
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
-
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
+  if (options.clickThrough) {
+    overlayWindow.setIgnoreMouseEvents(true, { forward: true })
+  }
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    overlayWindow.loadURL(process.env['ELECTRON_RENDERER_URL'].replace(/\/?$/, '/overlay.html'))
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
   }
+  if (options.opacity !== undefined) {
+    overlayWindow.setOpacity(options.opacity)
+  }
+  if (options.clickThrough) {
+    overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+    overlayWindow.setVisibleOnAllWorkspaces(true)
+    overlayWindow.setFocusable(false)
+  } else {
+    overlayWindow.setFocusable(true)
+  }
+  overlayWindow.on('closed', () => {
+    overlayWindow = null
+  })
+  return overlayWindow
 }
-
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
-
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
-  createWindow()
-
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
-
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})
+function getOverlayWindow() {
+  return overlayWindow
+}
 
 // Overlay IPC handlers
 let overlayContent = 'Overlay'
@@ -132,6 +128,89 @@ ipcMain.handle('overlay:get-state', () => ({
   content: overlayContent,
   ...overlayOptions
 }))
+
+// Add IPC handlers for main window control
+let mainWindowRef: BrowserWindow | null = null;
+
+function createWindow(): void {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: 900,
+    height: 670,
+    show: false,
+    autoHideMenuBar: true,
+    transparent: true, // Make window background transparent
+    frame: false,      // Remove window frame for overlay look
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+  mainWindowRef = mainWindow;
+
+  mainWindow.on('ready-to-show', () => {
+    mainWindow.show()
+  })
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url)
+    return { action: 'deny' }
+  })
+
+  // HMR for renderer base on electron-vite cli.
+  // Load the remote URL for development or the local html file for production.
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.whenReady().then(() => {
+  // Set app user model id for windows
+  electronApp.setAppUserModelId('com.electron')
+
+  // Default open or close DevTools by F12 in development
+  // and ignore CommandOrControl + R in production.
+  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window)
+  })
+
+  // IPC test
+  ipcMain.on('ping', () => console.log('pong'))
+
+  createWindow()
+
+  app.on('activate', function () {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+})
+
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
+
+ipcMain.on('main:set-opacity', (_e, opacity) => {
+  if (mainWindowRef) mainWindowRef.setOpacity(opacity);
+});
+ipcMain.on('main:set-size', (_e, { width, height }) => {
+  if (mainWindowRef) mainWindowRef.setSize(width, height);
+});
+ipcMain.on('main:set-click-through', (_e, clickThrough) => {
+  if (mainWindowRef) mainWindowRef.setIgnoreMouseEvents(!!clickThrough, { forward: true });
+});
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

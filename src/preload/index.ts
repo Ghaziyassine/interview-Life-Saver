@@ -14,9 +14,16 @@ const overlayAPI = {
   onContentUpdate: (cb) => ipcRenderer.on('overlay:update-content', (_e, content) => cb(content)),
 }
 
+const mainAPI = {
+  setOpacity: (opacity) => ipcRenderer.send('main:set-opacity', opacity),
+  setSize: (size) => ipcRenderer.send('main:set-size', size),
+  setClickThrough: (clickThrough) => ipcRenderer.send('main:set-click-through', clickThrough),
+}
+
 // Custom APIs for renderer
 const api = {
-  overlay: overlayAPI
+  overlay: overlayAPI,
+  main: mainAPI
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

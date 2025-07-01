@@ -1,44 +1,29 @@
 import { useEffect, useState } from 'react'
-import Versions from './components/Versions'
 import electronLogo from './assets/electron.svg'
+import { ChatOverlay } from './components/overlay'
 
 function App(): React.JSX.Element {
-  const [overlayState, setOverlayState] = useState<any>(null)
-  const [content, setContent] = useState('Hello Overlay!')
   const [opacity, setOpacity] = useState(1)
   const [clickThrough, setClickThrough] = useState(false)
-  const [visible, setVisible] = useState(false)
-  const [size, setSize] = useState({ width: 600, height: 200 })
+  const [size, setSize] = useState({ width: 900, height: 670 })
 
   useEffect(() => {
-    window.api.overlay.getState().then(setOverlayState)
-    window.api.overlay.onContentUpdate((c) => setContent(c))
+    // Optionally, fetch main window state if you have a handler
   }, [])
 
-  const showOverlay = () => {
-    window.api.overlay.show({ content, opacity, clickThrough, ...size })
-    setVisible(true)
-  }
-  const hideOverlay = () => {
-    window.api.overlay.hide()
-    setVisible(false)
-  }
-  const updateContent = () => {
-    window.api.overlay.updateContent(content)
-  }
   const changeOpacity = (e) => {
     const v = parseFloat(e.target.value)
     setOpacity(v)
-    window.api.overlay.setOpacity(v)
+    window.api.main.setOpacity(v)
   }
   const changeSize = (e) => {
     const w = parseInt((document.getElementById('overlay-width') as HTMLInputElement).value)
     const h = parseInt((document.getElementById('overlay-height') as HTMLInputElement).value)
     setSize({ width: w, height: h })
-    window.api.overlay.setSize({ width: w, height: h })
+    window.api.main.setSize({ width: w, height: h })
   }
   const toggleClickThrough = () => {
-    window.api.overlay.setClickThrough(!clickThrough)
+    window.api.main.setClickThrough(!clickThrough)
     setClickThrough(!clickThrough)
   }
 
@@ -64,50 +49,6 @@ function App(): React.JSX.Element {
           minWidth: 420,
         }}
       >
-        <button
-          title={visible ? 'Hide Overlay' : 'Show Overlay'}
-          onClick={visible ? hideOverlay : showOverlay}
-          style={{
-            background: visible ? '#2d8cff' : '#444',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '0.5em 1em',
-            fontSize: 20,
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-        >
-          {visible ? '🛑' : '▶️'}
-        </button>
-        <input
-          type="text"
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          style={{
-            background: 'rgba(255,255,255,0.08)',
-            color: '#fff',
-            border: '1px solid #555',
-            borderRadius: 8,
-            padding: '0.3em 0.7em',
-            fontSize: 16,
-            width: 120,
-          }}
-          placeholder="Overlay text"
-        />
-        <button
-          title="Update Content"
-          onClick={updateContent}
-          style={{
-            background: '#444',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '0.5em 1em',
-            fontSize: 18,
-            cursor: 'pointer',
-          }}
-        >💾</button>
         <label title="Opacity" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 18 }}>🌫️</span>
           <input
@@ -145,7 +86,7 @@ function App(): React.JSX.Element {
           />
         </label>
         <button
-          title="Toggle Click-Through"
+          title="Click-Through"
           onClick={toggleClickThrough}
           style={{
             background: clickThrough ? '#2d8cff' : '#444',
@@ -156,7 +97,12 @@ function App(): React.JSX.Element {
             fontSize: 20,
             cursor: 'pointer',
           }}
-        >🖱️🚫</button>
+        >🖱️</button>
+      </div>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 2000, pointerEvents: 'none' }}>
+        <div style={{ pointerEvents: 'auto' }}>
+          <ChatOverlay />
+        </div>
       </div>
     </>
   )

@@ -15,6 +15,11 @@ declare global {
         getState: () => Promise<any>
         onContentUpdate: (cb: (content: string) => void) => void
       }
+      main: {
+        setOpacity: (opacity: number) => void
+        setSize: (size: { width: number; height: number }) => void
+        setClickThrough: (clickThrough: boolean) => void
+      }
     }
   }
 }
