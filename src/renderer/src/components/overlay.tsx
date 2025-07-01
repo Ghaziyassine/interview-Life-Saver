@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import ReactMarkdown from 'react-markdown';
 
 function ChatOverlay() {
   const [messages, setMessages] = useState([
@@ -82,9 +83,17 @@ function ChatOverlay() {
               alignSelf: msg.from === 'bot' ? 'flex-start' : 'flex-end',
               fontSize: '1.1em',
               wordBreak: 'break-word',
+              fontFamily: msg.from === 'bot' ? 'Segoe UI, monospace, sans-serif' : 'inherit',
+              boxShadow: msg.from === 'bot' ? '0 2px 8px #2d8cff33' : undefined,
+              border: msg.from === 'bot' ? '1px solid #2d8cff55' : undefined,
+              marginBottom: 4,
             }}
           >
-            {msg.text}
+            {msg.from === 'bot' ? (
+              <BotMessage text={msg.text} />
+            ) : (
+              msg.text
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
@@ -131,6 +140,61 @@ function ChatOverlay() {
           }}
         >Send</button>
       </form>
+    </div>
+  );
+}
+
+function BotMessage({ text }: { text: string }) {
+  return (
+    <div style={{ width: '100%' }}>
+      <ReactMarkdown
+        children={text}
+        components={{
+          code({node, inline, className, children, ...props}) {
+            return !inline ? (
+              <pre style={{
+                background: '#181f2a',
+                color: '#e6eaff',
+                borderRadius: 8,
+                padding: '12px 14px',
+                margin: '10px 0',
+                fontSize: '1em',
+                overflowX: 'auto',
+                border: '1px solid #2d8cff33',
+                fontFamily: 'JetBrains Mono, Fira Mono, Consolas, monospace',
+              }}>
+                <code {...props}>{children}</code>
+              </pre>
+            ) : (
+              <code style={{
+                background: '#232b3a',
+                color: '#7ecfff',
+                borderRadius: 4,
+                padding: '2px 6px',
+                fontFamily: 'JetBrains Mono, Fira Mono, Consolas, monospace',
+              }} {...props}>{children}</code>
+            );
+          },
+          h1({children}) {
+            return <div style={{ fontWeight: 900, fontSize: '2em', color: '#fff', margin: '12px 0 8px 0' }}>{children}</div>;
+          },
+          h2({children}) {
+            return <div style={{ fontWeight: 700, fontSize: '1.5em', color: '#b8e0ff', margin: '10px 0 6px 0' }}>{children}</div>;
+          },
+          h3({children}) {
+            return <div style={{ fontWeight: 600, fontSize: '1.2em', color: '#7ecfff', margin: '8px 0 4px 0' }}>{children}</div>;
+          },
+          strong({children}) {
+            return <b style={{ fontWeight: 700 }}>{children}</b>;
+          },
+          em({children}) {
+            return <i style={{ fontStyle: 'italic' }}>{children}</i>;
+          },
+          del({children}) {
+            return <span style={{ textDecoration: 'line-through' }}>{children}</span>;
+          },
+        }}
+      />
     </div>
   );
 }
