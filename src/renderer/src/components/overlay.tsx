@@ -32,13 +32,11 @@ function ChatOverlay() {
   return (
     <div style={{
       position: 'absolute',
-      left: '50%',
-      top: '50%',
-      transform: 'translate(-50%, -50%)',
-      minWidth: 340,
-      maxWidth: '90vw',
-      minHeight: 200,
-      maxHeight: '80vh',
+      left: 0,
+      top: '15%',
+      width: '100vw',
+      height: '70vh',
+      marginTop: 24,
       background: 'rgba(30,30,40,0.96)',
       borderRadius: 18,
       boxShadow: '0 4px 32px #000a',
