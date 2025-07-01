@@ -145,11 +145,14 @@ function toggleMainClickThrough() {
 
 function createWindow(): void {
   // Create the browser window.
+  const { height } = screen.getPrimaryDisplay().workAreaSize;
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 440, // Set width to 440px
+    height: height, // Set height to full available height
     minWidth: 420, // Enforce minimum width
     minHeight: 420, // Enforce minimum height
+    x: 0, // Position at the left edge
+    y: 0, // Position at the top
     show: false,
     autoHideMenuBar: true,
     transparent: true, // Make window background transparent
@@ -252,7 +255,7 @@ ipcMain.handle('chatbot:ask-mcp', async (_event, prompt: string) => {
         model: 'qwen/qwen3-1.7b',
         messages: [
           { role: 'system', content: 'Always answer as helpfully as possible.' },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt + ' /no_think' }
         ]
       })
     });
