@@ -27,6 +27,7 @@ export function ControlBar({
   settingsRef,
   handleCloseApp,
 }: ControlBarProps) {
+  const CONTROL_BAR_MIN_WIDTH = 420;
   const changeOpacity = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = parseFloat(e.target.value);
     setOpacity(v);
@@ -35,8 +36,13 @@ export function ControlBar({
   const changeSize = () => {
     const w = parseInt((document.getElementById('overlay-width') as HTMLInputElement).value);
     const h = parseInt((document.getElementById('overlay-height') as HTMLInputElement).value);
-    setSize({ width: w, height: h });
-    window.api.main.setSize({ width: w, height: h });
+    if (w < CONTROL_BAR_MIN_WIDTH) {
+      setSize({ width: CONTROL_BAR_MIN_WIDTH, height: h });
+      window.api.main.setSize({ width: CONTROL_BAR_MIN_WIDTH, height: h });
+    } else {
+      setSize({ width: w, height: h });
+      window.api.main.setSize({ width: w, height: h });
+    }
   };
 
   return (
@@ -76,7 +82,7 @@ export function ControlBar({
         <input
           id="overlay-width"
           type="number"
-          min="100"
+          min={CONTROL_BAR_MIN_WIDTH}
           max="1920"
           value={size.width}
           onChange={changeSize}

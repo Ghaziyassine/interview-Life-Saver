@@ -147,6 +147,7 @@ function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
+    minWidth: 420, // Enforce minimum width
     show: false,
     autoHideMenuBar: true,
     transparent: true, // Make window background transparent
@@ -228,7 +229,10 @@ ipcMain.on('main:set-opacity', (_e, opacity) => {
   if (mainWindowRef) mainWindowRef.setOpacity(opacity);
 });
 ipcMain.on('main:set-size', (_e, { width, height }) => {
-  if (mainWindowRef) mainWindowRef.setSize(width, height);
+  // Prevent window width from being set below 420px (control bar min width)
+  const minWidth = 420;
+  const safeWidth = Math.max(width, minWidth);
+  if (mainWindowRef) mainWindowRef.setSize(safeWidth, height);
 });
 ipcMain.on('main:set-click-through', (_e, clickThrough) => {
   if (mainWindowRef) mainWindowRef.setIgnoreMouseEvents(!!clickThrough, { forward: true });
