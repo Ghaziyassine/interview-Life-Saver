@@ -150,8 +150,9 @@ function BotMessage({ text }: { text: string }) {
       <ReactMarkdown
         children={text}
         components={{
-          code({node, inline, className, children, ...props}) {
-            return !inline ? (
+          code({node, className, children, ...props}) {
+            const isInline = !(className && className.includes('language-'));
+            return !isInline ? (
               <pre style={{
                 background: '#181f2a',
                 color: '#e6eaff',
