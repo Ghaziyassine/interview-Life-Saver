@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import electronLogo from './assets/electron.svg'
 import { ChatOverlay } from './components/overlay'
 
@@ -7,6 +7,8 @@ function App(): React.JSX.Element {
   const [clickThrough, setClickThrough] = useState(false)
   const [size, setSize] = useState({ width: 900, height: 670 })
   const [toggleAnim, setToggleAnim] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const settingsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Listen for click-through toggled from main process (shortcut or programmatic)
@@ -18,6 +20,21 @@ function App(): React.JSX.Element {
       })
     }
   }, [])
+
+  useEffect(() => {
+    // Hide settings menu when clicking outside
+    function handleClick(e: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setShowSettings(false)
+      }
+    }
+    if (showSettings) {
+      document.addEventListener('mousedown', handleClick)
+    } else {
+      document.removeEventListener('mousedown', handleClick)
+    }
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showSettings])
 
   const changeOpacity = (e) => {
     const v = parseFloat(e.target.value)
@@ -35,6 +52,10 @@ function App(): React.JSX.Element {
     setClickThrough(!clickThrough)
     setToggleAnim(true)
     setTimeout(() => setToggleAnim(false), 600)
+  }
+  const handleCloseApp = () => {
+    setShowSettings(false)
+    window.api?.main?.closeApp?.()
   }
 
   return (
@@ -96,7 +117,7 @@ function App(): React.JSX.Element {
           />
         </label>
         <button
-          title="Click-Through"
+          title="Click-Through (alt+shit+o)"
           onClick={toggleClickThrough}
           style={{
             background: clickThrough ? '#2d8cff' : '#444',
@@ -111,6 +132,54 @@ function App(): React.JSX.Element {
             outline: toggleAnim ? '2px solid #2d8cff' : undefined,
           }}
         >🖱️</button>
+        <button
+          title="Settings"
+          onClick={() => setShowSettings(v => !v)}
+          style={{
+            background: '#444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '0.5em 1em',
+            fontSize: 20,
+            cursor: 'pointer',
+            position: 'relative',
+          }}
+        >⚙️</button>
+        {showSettings && (
+          <div
+            ref={settingsRef}
+            style={{
+              position: 'absolute',
+              top: 56,
+              right: 0,
+              background: '#222',
+              color: '#fff',
+              borderRadius: 10,
+              boxShadow: '0 4px 16px #0008',
+              padding: '0.5em 1.5em',
+              zIndex: 2001,
+              minWidth: 120,
+            }}
+          >
+            <button
+              onClick={handleCloseApp}
+              style={{
+                background: 'none',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '0.5em 0',
+                fontSize: 16,
+                width: '100%',
+                textAlign: 'left',
+                cursor: 'pointer',
+              }}
+            >
+              ❌ Close App
+            </button>
+          </div>
+        )}
       </div>
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, pointerEvents: 'none' }}>
         <div style={{ pointerEvents: 'auto' }}>

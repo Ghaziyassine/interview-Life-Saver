@@ -236,5 +236,11 @@ ipcMain.on('main:set-click-through', (_e, clickThrough) => {
   if (mainWindowRef) mainWindowRef.webContents.send('main:click-through-toggled', mainClickThrough);
 });
 
+// Handle close app from renderer
+ipcMain.on('main:close-app', () => {
+  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+  if (win) win.close()
+})
+
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

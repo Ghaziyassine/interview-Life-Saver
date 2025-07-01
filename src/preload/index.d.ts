@@ -19,6 +19,8 @@ declare global {
         setOpacity: (opacity: number) => void
         setSize: (size: { width: number; height: number }) => void
         setClickThrough: (clickThrough: boolean) => void
+        onClickThroughToggled?: (cb: (state: boolean) => void) => void
+        closeApp: () => void // Added closeApp method
       }
     }
   }
