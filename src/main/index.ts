@@ -141,6 +141,9 @@ function createWindow(): void {
     autoHideMenuBar: true,
     transparent: true, // Make window background transparent
     frame: false,      // Remove window frame for overlay look
+    alwaysOnTop: true, // Ensure window is always on top
+    // Optionally, use 'screen-saver' level for highest priority
+    // alwaysOnTop: true, level: 'screen-saver',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
