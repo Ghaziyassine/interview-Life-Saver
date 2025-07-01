@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -131,6 +131,16 @@ ipcMain.handle('overlay:get-state', () => ({
 
 // Add IPC handlers for main window control
 let mainWindowRef: BrowserWindow | null = null;
+let mainClickThrough = false; // Track click-through state
+
+function toggleMainClickThrough() {
+  if (mainWindowRef) {
+    mainClickThrough = !mainClickThrough;
+    mainWindowRef.setIgnoreMouseEvents(mainClickThrough, { forward: true });
+    // Notify renderer of the new state
+    mainWindowRef.webContents.send('main:click-through-toggled', mainClickThrough);
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -189,6 +199,11 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  // Register global shortcut for Alt+Shift+O to toggle click-through
+  globalShortcut.register('Alt+Shift+O', () => {
+    toggleMainClickThrough();
+  });
+
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
@@ -205,6 +220,10 @@ app.on('window-all-closed', () => {
   }
 })
 
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+});
+
 ipcMain.on('main:set-opacity', (_e, opacity) => {
   if (mainWindowRef) mainWindowRef.setOpacity(opacity);
 });
@@ -213,6 +232,8 @@ ipcMain.on('main:set-size', (_e, { width, height }) => {
 });
 ipcMain.on('main:set-click-through', (_e, clickThrough) => {
   if (mainWindowRef) mainWindowRef.setIgnoreMouseEvents(!!clickThrough, { forward: true });
+  mainClickThrough = !!clickThrough;
+  if (mainWindowRef) mainWindowRef.webContents.send('main:click-through-toggled', mainClickThrough);
 });
 
 // In this file you can include the rest of your app's specific main process

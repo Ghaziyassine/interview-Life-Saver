@@ -6,9 +6,17 @@ function App(): React.JSX.Element {
   const [opacity, setOpacity] = useState(1)
   const [clickThrough, setClickThrough] = useState(false)
   const [size, setSize] = useState({ width: 900, height: 670 })
+  const [toggleAnim, setToggleAnim] = useState(false)
 
   useEffect(() => {
-    // Optionally, fetch main window state if you have a handler
+    // Listen for click-through toggled from main process (shortcut or programmatic)
+    if (window.api?.main?.onClickThroughToggled) {
+      window.api.main.onClickThroughToggled((state) => {
+        setClickThrough(state)
+        setToggleAnim(true)
+        setTimeout(() => setToggleAnim(false), 600)
+      })
+    }
   }, [])
 
   const changeOpacity = (e) => {
@@ -25,6 +33,8 @@ function App(): React.JSX.Element {
   const toggleClickThrough = () => {
     window.api.main.setClickThrough(!clickThrough)
     setClickThrough(!clickThrough)
+    setToggleAnim(true)
+    setTimeout(() => setToggleAnim(false), 600)
   }
 
   return (
@@ -96,6 +106,9 @@ function App(): React.JSX.Element {
             padding: '0.5em 1em',
             fontSize: 20,
             cursor: 'pointer',
+            boxShadow: toggleAnim ? '0 0 0 4px #2d8cff88' : undefined,
+            transition: 'box-shadow 0.3s',
+            outline: toggleAnim ? '2px solid #2d8cff' : undefined,
           }}
         >🖱️</button>
       </div>

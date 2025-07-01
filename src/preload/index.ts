@@ -18,6 +18,7 @@ const mainAPI = {
   setOpacity: (opacity) => ipcRenderer.send('main:set-opacity', opacity),
   setSize: (size) => ipcRenderer.send('main:set-size', size),
   setClickThrough: (clickThrough) => ipcRenderer.send('main:set-click-through', clickThrough),
+  onClickThroughToggled: (cb) => ipcRenderer.on('main:click-through-toggled', (_e, state) => cb(state)),
 }
 
 // Custom APIs for renderer
