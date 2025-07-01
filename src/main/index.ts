@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import fetch from 'node-fetch'
+import fetch from 'node-fetch';
 
 // Overlay window logic (merged from overlay.ts)
 let overlayWindow: BrowserWindow | null = null
@@ -245,22 +246,28 @@ ipcMain.on('main:set-click-through', (_e, clickThrough) => {
   if (mainWindowRef) mainWindowRef.webContents.send('main:click-through-toggled', mainClickThrough);
 });
 
-// MCP LLM handler
+// Gemini LLM handler (using Google Generative Language API)
 ipcMain.handle('chatbot:ask-mcp', async (_event, prompt: string) => {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY) {
+    return { success: false, error: 'Gemini API key not set in environment variable GEMINI_API_KEY.' };
+  }
   try {
-    const res = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'qwen/qwen3-1.7b',
-        messages: [
-          { role: 'system', content: 'Always answer as helpfully as possible.' },
-          { role: 'user', content: prompt + ' /no_think' }
-        ]
-      })
-    });
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+    if (!res.ok) {
+      const errorText = await res.text();
+      return { success: false, error: `Gemini API error: ${res.status} ${res.statusText} - ${errorText}` };
+    }
     const data = await res.json();
-    const answer = data?.choices?.[0]?.message?.content || 'No response';
+    const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
     return { success: true, answer };
   } catch (err) {
     let errorMsg = 'Unknown error';
