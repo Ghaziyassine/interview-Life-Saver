@@ -2,12 +2,54 @@ import { useRef, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import ReactMarkdown from 'react-markdown';
 
+// --- Token counting utility (simple estimation) ---
+function estimateTokens(text: string): number {
+  // Roughly 1.3 tokens per word (for English, varies by language/model)
+  return Math.ceil(text.split(/\s+/).length * 1.3);
+}
+
+// --- Summarization utility (very basic, replace with LLM call for better results) ---
+function summarizeMessages(messages: { text: string; from: string }[]): string {
+  // Simple summary: concatenate first and last user/bot messages, or use a placeholder
+  if (messages.length === 0) return '';
+  const first = messages[0];
+  const last = messages[messages.length - 1];
+  return `Summary: Conversation started with "${first.text.slice(0, 40)}..." and most recently "${last.text.slice(0, 40)}..."`;
+}
+
+// --- Prompt builder ---
+function buildPromptContext(
+  allMessages: { text: string; from: string }[],
+  tokenLimit: number
+): { summary: string; recentMessages: { text: string; from: string }[] } {
+  let totalTokens = 0;
+  const reversed: { text: string; from: string }[] = [];
+  // Traverse from end (most recent) backwards
+  for (let i = allMessages.length - 1; i >= 0; i--) {
+    const msg = allMessages[i];
+    const tokens = estimateTokens(msg.text);
+    if (totalTokens + tokens > tokenLimit) break;
+    reversed.push(msg);
+    totalTokens += tokens;
+  }
+  const recentMessages = reversed.reverse();
+  const olderMessages = allMessages.slice(0, allMessages.length - recentMessages.length);
+  const summary = olderMessages.length > 0 ? summarizeMessages(olderMessages) : '';
+  return { summary, recentMessages };
+}
+
 function ChatOverlay() {
   const [messages, setMessages] = useState([
     { text: 'Hello! How can I help you?', from: 'bot' }
   ]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // In-memory full conversation history (not persisted)
+  const conversationHistory = useRef<{ text: string; from: string }[]>([
+    { text: 'Hello! How can I help you?', from: 'bot' }
+  ]);
+  // Token limit for prompt context
+  const TOKEN_LIMIT = 1000;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -17,28 +59,43 @@ function ChatOverlay() {
     e.preventDefault();
     const prompt = input.trim();
     if (!prompt) return;
+    // Add user message to history
+    conversationHistory.current.push({ text: prompt, from: 'user' });
     setMessages((prev) => [
       ...prev,
       { text: prompt, from: 'user' },
     ]);
     setInput('');
+    // Build prompt context (summary + recent messages)
+    const { summary, recentMessages } = buildPromptContext(conversationHistory.current, TOKEN_LIMIT);
+    // Compose the prompt for the LLM
+    let promptContext = '';
+    if (summary) {
+      promptContext += summary + '\n';
+    }
+    for (const msg of recentMessages) {
+      promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
+    }
     try {
-      const res = await window.api?.chatbot?.askMcp?.(prompt);
+      // Send the composed prompt context to the LLM API
+      const res = await window.api?.chatbot?.askMcp?.(promptContext);
+      let botMsg = '';
       if (res?.success) {
-        setMessages((prev) => [
-          ...prev,
-          { text: res.answer ?? 'No response', from: 'bot' },
-        ]);
+        botMsg = res.answer ?? 'No response';
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { text: res?.error ?? 'Error contacting local LLM', from: 'bot' },
-        ]);
+        botMsg = res?.error ?? 'Error contacting local LLM';
       }
+      // Add bot message to history
+      conversationHistory.current.push({ text: botMsg, from: 'bot' });
+      setMessages((prev) => [
+        ...prev,
+        { text: botMsg, from: 'bot' },
+      ]);
     } catch (err) {
       const errorMsg = (err && typeof err === 'object' && 'message' in err)
         ? (err as any).message
         : String(err);
+      conversationHistory.current.push({ text: 'Error: ' + errorMsg, from: 'bot' });
       setMessages((prev) => [
         ...prev,
         { text: 'Error: ' + errorMsg, from: 'bot' },
