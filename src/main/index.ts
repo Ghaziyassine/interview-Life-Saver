@@ -148,6 +148,7 @@ function createWindow(): void {
     width: 900,
     height: 670,
     minWidth: 420, // Enforce minimum width
+    minHeight: 420, // Enforce minimum height
     show: false,
     autoHideMenuBar: true,
     transparent: true, // Make window background transparent
