@@ -8,6 +8,7 @@ function App(): React.JSX.Element {
   const [size, setSize] = useState({ width: 900, height: 670 })
   const [toggleAnim, setToggleAnim] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [stealth, setStealth] = useState(false)
   const settingsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -18,6 +19,13 @@ function App(): React.JSX.Element {
         setToggleAnim(true)
         setTimeout(() => setToggleAnim(false), 600)
       })
+    }
+
+    // Listen for stealth toggled from main process (shortcut or programmatic)
+    if (window.electron?.ipcRenderer) {
+      window.electron.ipcRenderer.on('main:stealth-toggled', (_event, state) => {
+        setStealth(state)
+      });
     }
   }, [])
 
@@ -61,6 +69,8 @@ function App(): React.JSX.Element {
         setShowSettings={setShowSettings}
         settingsRef={settingsRef as React.RefObject<HTMLDivElement>}
         handleCloseApp={handleCloseApp}
+        stealth={stealth}
+        setStealth={setStealth}
       />
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, pointerEvents: 'none' }}>
         <div style={{ pointerEvents: 'auto' }}>

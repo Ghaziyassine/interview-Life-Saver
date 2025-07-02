@@ -6,6 +6,7 @@ declare interface MainAPI {
   setClickThrough: (clickThrough: boolean) => void;
   onClickThroughToggled: (cb: (state: boolean) => void) => void;
   closeApp: () => void;
+  minimize: () => void;
 }
 
 declare interface ChatbotAPI {

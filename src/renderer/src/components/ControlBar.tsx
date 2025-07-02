@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+// import { useEffect, useRef, useState } from 'react';
 
 interface ControlBarProps {
   opacity: number;
@@ -12,7 +12,12 @@ interface ControlBarProps {
   setShowSettings: (v: boolean) => void;
   settingsRef: React.RefObject<HTMLDivElement>;
   handleCloseApp: () => void;
+  stealth: boolean;
+  setStealth: (v: boolean) => void;
 }
+
+import { icons } from '@renderer/assets/icons';
+import { useEffect } from 'react';
 
 export function ControlBar({
   opacity,
@@ -26,7 +31,18 @@ export function ControlBar({
   setShowSettings,
   settingsRef,
   handleCloseApp,
+  stealth,
+  setStealth,
 }: ControlBarProps) {
+  // Automatically resize the frame when stealth mode is activated
+  useEffect(() => {
+    if (stealth) {
+      // Example: minimize to a small bar (width: 60, height: 40)
+      const stealthSize = { width: 500, height: 800 };
+      setSize(stealthSize);
+      window.api.main.setSize(stealthSize);
+    }
+  }, [stealth]);
   const CONTROL_BAR_MIN_WIDTH = 420;
   const changeOpacity = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = parseFloat(e.target.value);
@@ -44,6 +60,8 @@ export function ControlBar({
       window.api.main.setSize({ width: w, height: h });
     }
   };
+
+  
 
   return (
     <div
@@ -63,8 +81,28 @@ export function ControlBar({
         backdropFilter: 'blur(8px)',
         border: '1.5px solid #444',
         minWidth: 420,
+        opacity: stealth ? 0 : 1,
+        pointerEvents: stealth ? 'none' : 'auto',
+        transition: 'opacity 0.5s cubic-bezier(.4,0,.2,1)',
       }}
     >
+      <button
+        title={stealth ? 'Show Control Bar' : 'Stealth Mode (Alt+Shift+i)'}
+        onClick={() => setStealth(!stealth)}
+        style={{
+          background: stealth ? '#2d8cff' : '#444',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '0.5em 1em',
+          fontSize: 20,
+          cursor: 'pointer',
+          marginRight: 8,
+          transition: 'background 0.3s',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >{stealth ? <icons.unlock /> : <icons.lock />}</button>
       <label title="Opacity" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <span style={{ fontSize: 18 }}>🌫️</span>
         <input
@@ -117,6 +155,7 @@ export function ControlBar({
           outline: toggleAnim ? '2px solid #2d8cff' : undefined,
         }}
       >🖱️</button>
+      
       <button
         title="Settings"
         onClick={() => setShowSettings(!showSettings)}
@@ -147,6 +186,22 @@ export function ControlBar({
             minWidth: 120,
           }}
         >
+          <button
+            onClick={() => window.api.main.minimize()}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            🗕 Minimize App
+          </button>
           <button
             onClick={handleCloseApp}
             style={{

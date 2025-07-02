@@ -1,3 +1,8 @@
+// Handle minimize app from renderer
+ipcMain.on('main:minimize', () => {
+  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+  if (win) win.minimize()
+})
 import 'dotenv/config';
 import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut } from 'electron'
 import { join } from 'path'
@@ -134,6 +139,7 @@ ipcMain.handle('overlay:get-state', () => ({
 // Add IPC handlers for main window control
 let mainWindowRef: BrowserWindow | null = null;
 let mainClickThrough = false; // Track click-through state
+let mainStealth = false; // Track stealth state
 
 function toggleMainClickThrough() {
   if (mainWindowRef) {
@@ -141,6 +147,13 @@ function toggleMainClickThrough() {
     mainWindowRef.setIgnoreMouseEvents(mainClickThrough, { forward: true });
     // Notify renderer of the new state
     mainWindowRef.webContents.send('main:click-through-toggled', mainClickThrough);
+  }
+}
+
+function toggleMainStealth() {
+  if (mainWindowRef) {
+    mainStealth = !mainStealth;
+    mainWindowRef.webContents.send('main:stealth-toggled', mainStealth);
   }
 }
 
@@ -206,9 +219,15 @@ app.whenReady().then(() => {
 
   createWindow()
 
+
   // Register global shortcut for Alt+Shift+O to toggle click-through
   globalShortcut.register('Alt+Shift+O', () => {
     toggleMainClickThrough();
+  });
+
+  // Register global shortcut for Alt+Shift+S to toggle Stealth Mode
+  globalShortcut.register('Alt+Shift+i', () => {
+    toggleMainStealth();
   });
 
   app.on('activate', function () {

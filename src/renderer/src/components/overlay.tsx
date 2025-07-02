@@ -144,6 +144,7 @@ function ChatOverlay() {
               boxShadow: msg.from === 'bot' ? '0 2px 8px #2d8cff33' : undefined,
               border: msg.from === 'bot' ? '1px solid #2d8cff55' : undefined,
               marginBottom: 4,
+              userSelect: 'text',
             }}
           >
             {msg.from === 'bot' ? (
