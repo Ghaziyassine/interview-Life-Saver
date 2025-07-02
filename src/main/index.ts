@@ -332,19 +332,29 @@ ipcMain.on('main:set-click-through', (_e, clickThrough) => {
 });
 
 // Gemini LLM handler (using Google Generative Language API)
-ipcMain.handle('chatbot:ask-mcp', async (_event, prompt: string) => {
+ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_API_KEY) {
     return { success: false, error: 'Gemini API key not set in environment variable GEMINI_API_KEY.' };
   }
   try {
+    // If payload is a string, treat as text prompt (backward compatible)
+    let body;
+    if (typeof payload === 'string') {
+      body = {
+        contents: [{ parts: [{ text: payload }] }]
+      };
+    } else if (payload && typeof payload === 'object' && payload.contents) {
+      // If payload is already a Gemini request (with contents/parts), send as-is
+      body = payload;
+    } else {
+      return { success: false, error: 'Invalid request format.' };
+    }
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
+        body: JSON.stringify(body)
       }
     );
     if (!res.ok) {

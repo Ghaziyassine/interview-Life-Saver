@@ -38,11 +38,14 @@ function buildPromptContext(
   return { summary, recentMessages };
 }
 
+
 function ChatOverlay() {
   const [messages, setMessages] = useState([
     { text: 'Hello! How can I help you?', from: 'bot' }
   ]);
   const [input, setInput] = useState('');
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // In-memory full conversation history (not persisted)
   const conversationHistory = useRef<{ text: string; from: string }[]>([
@@ -55,30 +58,80 @@ function ChatOverlay() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle image file selection and convert to base64
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImageBase64(null);
+      setImageMime(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // result is data:<mime>;base64,<base64>
+      const base64 = result.split(',')[1];
+      setImageBase64(base64);
+      setImageMime(file.type);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const sendPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     const prompt = input.trim();
-    if (!prompt) return;
+    if (!prompt && !imageBase64) return;
     // Add user message to history
-    conversationHistory.current.push({ text: prompt, from: 'user' });
+    let userMsgText = prompt;
+    if (imageBase64) {
+      userMsgText = '[Image sent]' + (prompt ? ' ' + prompt : '');
+    }
+    conversationHistory.current.push({ text: userMsgText, from: 'user' });
     setMessages((prev) => [
       ...prev,
-      { text: prompt, from: 'user' },
+      { text: userMsgText, from: 'user' },
     ]);
     setInput('');
-    // Build prompt context (summary + recent messages)
-    const { summary, recentMessages } = buildPromptContext(conversationHistory.current, TOKEN_LIMIT);
-    // Compose the prompt for the LLM
-    let promptContext = '';
-    if (summary) {
-      promptContext += summary + '\n';
+
+    // Build Gemini request
+    let geminiRequest: any;
+    if (imageBase64 && imageMime) {
+      // Send image and text as parts
+      geminiRequest = {
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: imageMime,
+                  data: imageBase64,
+                },
+              },
+              ...(prompt ? [{ text: prompt }] : []),
+            ],
+          },
+        ],
+      };
+    } else {
+      // Text only: build context as before
+      const { summary, recentMessages } = buildPromptContext(conversationHistory.current, TOKEN_LIMIT);
+      let promptContext = '';
+      if (summary) {
+        promptContext += summary + '\n';
+      }
+      for (const msg of recentMessages) {
+        promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
+      }
+      geminiRequest = promptContext;
     }
-    for (const msg of recentMessages) {
-      promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
-    }
+
+    // Clear image after sending
+    setImageBase64(null);
+    setImageMime(null);
+
     try {
-      // Send the composed prompt context to the LLM API
-      const res = await window.api?.chatbot?.askMcp?.(promptContext);
+      // Send the composed prompt context or image+text to the LLM API
+      const res = await window.api?.chatbot?.askMcp?.(geminiRequest);
       let botMsg = '';
       if (res?.success) {
         botMsg = res.answer ?? 'No response';
@@ -164,9 +217,25 @@ function ChatOverlay() {
           padding: '12px 18px 18px 18px',
           background: 'rgba(30,30,40,0.96)',
           borderTop: '1px solid #333',
+          alignItems: 'center',
         }}
         autoComplete="off"
       >
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          style={{
+            borderRadius: 8,
+            border: '1px solid #555',
+            background: 'rgba(255,255,255,0.08)',
+            color: '#fff',
+            fontSize: '1em',
+            padding: '6px 8px',
+            outline: 'none',
+            width: 120,
+          }}
+        />
         <input
           type="text"
           value={input}
@@ -197,6 +266,9 @@ function ChatOverlay() {
             transition: 'background 0.2s',
           }}
         >Send</button>
+        {imageBase64 && (
+          <span style={{ color: '#7ecfff', fontSize: '0.95em', marginLeft: 8 }}>Image ready</span>
+        )}
       </form>
     </div>
   );
