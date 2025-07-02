@@ -203,6 +203,25 @@ export function ControlBar({
             🗕 Minimize App
           </button>
           <button
+            onClick={() => {
+              // Reset context: refresh conversation
+              window.location.reload();
+            }}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            🔄 Reset Context
+          </button>
+          <button
             onClick={handleCloseApp}
             style={{
               background: 'none',
