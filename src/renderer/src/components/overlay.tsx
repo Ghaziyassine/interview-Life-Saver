@@ -39,13 +39,14 @@ function buildPromptContext(
 }
 
 
+
 function ChatOverlay() {
   const [messages, setMessages] = useState([
     { text: 'Hello! How can I help you?', from: 'bot' }
   ]);
   const [input, setInput] = useState('');
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [imageMime, setImageMime] = useState<string | null>(null);
+  // Multiple images: array of { base64, mime }
+  const [images, setImages] = useState<{ base64: string; mime: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // In-memory full conversation history (not persisted)
   const conversationHistory = useRef<{ text: string; from: string }[]>([
@@ -58,33 +59,37 @@ function ChatOverlay() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle image file selection and convert to base64
+  // Handle multiple image file selection and convert to base64
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setImageBase64(null);
-      setImageMime(null);
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      setImages([]);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // result is data:<mime>;base64,<base64>
-      const base64 = result.split(',')[1];
-      setImageBase64(base64);
-      setImageMime(file.type);
-    };
-    reader.readAsDataURL(file);
+    const fileArr = Array.from(files);
+    const readers = fileArr.map(file => {
+      return new Promise<{ base64: string; mime: string }>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64 = result.split(',')[1];
+          resolve({ base64, mime: file.type });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+    Promise.all(readers).then(setImages);
   };
 
   const sendPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     const prompt = input.trim();
-    if (!prompt && !imageBase64) return;
+    if (!prompt && images.length === 0) return;
     // Add user message to history
     let userMsgText = prompt;
-    if (imageBase64) {
-      userMsgText = '[Image sent]' + (prompt ? ' ' + prompt : '');
+    if (images.length > 0) {
+      userMsgText = `[${images.length} Image${images.length > 1 ? 's' : ''} sent]` + (prompt ? ' ' + prompt : '');
     }
     conversationHistory.current.push({ text: userMsgText, from: 'user' });
     setMessages((prev) => [
@@ -95,18 +100,19 @@ function ChatOverlay() {
 
     // Build Gemini request
     let geminiRequest: any;
-    if (imageBase64 && imageMime) {
-      // Send image and text as parts
+    if (images.length > 0) {
+      // Send multiple images and text as parts
+      const imageParts = images.map(img => ({
+        inlineData: {
+          mimeType: img.mime,
+          data: img.base64,
+        },
+      }));
       geminiRequest = {
         contents: [
           {
             parts: [
-              {
-                inlineData: {
-                  mimeType: imageMime,
-                  data: imageBase64,
-                },
-              },
+              ...imageParts,
               ...(prompt ? [{ text: prompt }] : []),
             ],
           },
@@ -125,13 +131,19 @@ function ChatOverlay() {
       geminiRequest = promptContext;
     }
 
-    // Clear image after sending
-    setImageBase64(null);
-    setImageMime(null);
+    // Clear images after sending
+    setImages([]);
 
     try {
-      // Send the composed prompt context or image+text to the LLM API
-      const res = await window.api?.chatbot?.askMcp?.(geminiRequest);
+      // Send the composed prompt context or image+text to the LLM API via IPC (base64 images included)
+      // Use window.electron.ipcRenderer.invoke for IPC transfer
+      let res;
+      if (window.electron?.ipcRenderer?.invoke) {
+        res = await window.electron.ipcRenderer.invoke('chatbot:ask-mcp', geminiRequest);
+      } else if (window.api?.chatbot?.askMcp) {
+        // fallback for existing API
+        res = await window.api.chatbot.askMcp(geminiRequest);
+      }
       let botMsg = '';
       if (res?.success) {
         botMsg = res.answer ?? 'No response';
@@ -221,21 +233,30 @@ function ChatOverlay() {
         }}
         autoComplete="off"
       >
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          style={{
-            borderRadius: 8,
-            border: '1px solid #555',
-            background: 'rgba(255,255,255,0.08)',
-            color: '#fff',
-            fontSize: '1em',
-            padding: '6px 8px',
-            outline: 'none',
-            width: 120,
-          }}
-        />
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'rgba(45,140,255,0.10)',
+          borderRadius: 8,
+          border: '1.5px solid #2d8cff33',
+          padding: '6px 10px',
+          cursor: 'pointer',
+          color: '#7ecfff',
+          fontWeight: 600,
+          fontSize: '1em',
+          transition: 'background 0.2s',
+        }} title="Attach images">
+          <span style={{ fontSize: 18 }}>📎</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageChange}
+            style={{ display: 'none' }}
+          />
+          <span>Attach</span>
+        </label>
         <input
           type="text"
           value={input}
@@ -266,8 +287,8 @@ function ChatOverlay() {
             transition: 'background 0.2s',
           }}
         >Send</button>
-        {imageBase64 && (
-          <span style={{ color: '#7ecfff', fontSize: '0.95em', marginLeft: 8 }}>Image ready</span>
+        {images.length > 0 && (
+          <span style={{ color: '#7ecfff', fontSize: '0.95em', marginLeft: 8 }}>{images.length} image{images.length > 1 ? 's' : ''} ready</span>
         )}
       </form>
     </div>
