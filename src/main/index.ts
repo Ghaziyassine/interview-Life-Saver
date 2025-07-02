@@ -4,10 +4,12 @@ ipcMain.on('main:minimize', () => {
   if (win) win.minimize()
 })
 import 'dotenv/config';
-import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+// Tray icon reference
+let tray: Tray | null = null;
 import fetch from 'node-fetch';
 
 // Overlay window logic (merged from overlay.ts)
@@ -160,7 +162,7 @@ function toggleMainStealth() {
 function createWindow(): void {
   // Create the browser window.
   const { height } = screen.getPrimaryDisplay().workAreaSize;
-  const mainWindow = new BrowserWindow({
+  const mainWindow: BrowserWindow = new BrowserWindow({
     width: 440, // Set width to 440px
     height: height, // Set height to full available height
     minWidth: 420, // Enforce minimum width
@@ -172,24 +174,88 @@ function createWindow(): void {
     transparent: true, // Make window background transparent
     frame: false,      // Remove window frame for overlay look
     alwaysOnTop: true, // Ensure window is always on top
-    // Optionally, use 'screen-saver' level for highest priority
-    // alwaysOnTop: true, level: 'screen-saver',
+    skipTaskbar: true, // Hide from app switcher (Windows/Linux)
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
+  // Hide from app switcher on macOS
+  if (process.platform === 'darwin') {
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    mainWindow.setSkipTaskbar(true);
+    // Electron does not have setExcludedFromShownWindowsMenu, so we skip this for now
+  }
+
   mainWindowRef = mainWindow;
 
+  // Show window by default
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
+    mainWindow.show();
+  });
+
+  // Create tray icon if not already created
+  if (!tray) {
+    tray = new Tray(icon);
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: () => {
+          if (mainWindowRef) {
+            mainWindowRef.show();
+            mainWindowRef.focus();
+          }
+        }
+      },
+      {
+        label: 'Hide App',
+        click: () => {
+          if (mainWindowRef) mainWindowRef.hide();
+        }
+      },
+      {
+        label: 'Quit',
+        click: () => {
+          app.quit();
+        }
+      }
+    ]);
+    tray.setToolTip('Electron App');
+    tray.setContextMenu(contextMenu);
+    tray.on('click', () => {
+      if (mainWindowRef) {
+        if (mainWindowRef.isVisible()) {
+          mainWindowRef.hide();
+        } else {
+          mainWindowRef.show();
+          mainWindowRef.focus();
+        }
+      }
+    });
+  }
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
+
+  // Hide from taskbar only when minimized
+  mainWindow.on('minimize' as any, (event: Electron.Event) => {
+    event.preventDefault();
+    mainWindow.hide();
+  });
+  // Track if app is quitting to allow real close
+  let isQuitting = false;
+  app.on('before-quit', () => {
+    isQuitting = true;
+  });
+  mainWindow.on('close', (event: Electron.Event) => {
+    if (!isQuitting) {
+      // Only hide on minimize, allow close
+      // Remove event.preventDefault();
+    }
+  });
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
