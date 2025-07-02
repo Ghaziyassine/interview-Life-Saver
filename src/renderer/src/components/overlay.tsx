@@ -255,7 +255,6 @@ function ChatOverlay() {
             onChange={handleImageChange}
             style={{ display: 'none' }}
           />
-          <span>Attach</span>
         </label>
         <button
           type="button"
@@ -286,7 +285,6 @@ function ChatOverlay() {
           }}
         >
           <span style={{ fontSize: 18 }}>📸</span>
-          <span>Screenshot</span>
         </button>
         <input
           type="text"

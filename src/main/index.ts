@@ -285,7 +285,6 @@ app.whenReady().then(() => {
 
   createWindow()
 
-
   // Register global shortcut for Alt+Shift+O to toggle click-through
   globalShortcut.register('Alt+Shift+O', () => {
     toggleMainClickThrough();
@@ -294,6 +293,33 @@ app.whenReady().then(() => {
   // Register global shortcut for Alt+Shift+S to toggle Stealth Mode
   globalShortcut.register('Alt+Shift+i', () => {
     toggleMainStealth();
+  });
+
+  // Register global shortcuts for Ctrl+Arrow keys to move window
+  const moveStep = 50;
+  globalShortcut.register('Control+Up', () => {
+    if (mainWindowRef) {
+      const [x, y] = mainWindowRef.getPosition();
+      mainWindowRef.setPosition(x, y - moveStep);
+    }
+  });
+  globalShortcut.register('Control+Down', () => {
+    if (mainWindowRef) {
+      const [x, y] = mainWindowRef.getPosition();
+      mainWindowRef.setPosition(x, y + moveStep);
+    }
+  });
+  globalShortcut.register('Control+Left', () => {
+    if (mainWindowRef) {
+      const [x, y] = mainWindowRef.getPosition();
+      mainWindowRef.setPosition(x - moveStep, y);
+    }
+  });
+  globalShortcut.register('Control+Right', () => {
+    if (mainWindowRef) {
+      const [x, y] = mainWindowRef.getPosition();
+      mainWindowRef.setPosition(x + moveStep, y);
+    }
   });
 
   app.on('activate', function () {
