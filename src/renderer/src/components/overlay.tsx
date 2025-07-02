@@ -257,6 +257,37 @@ function ChatOverlay() {
           />
           <span>Attach</span>
         </label>
+        <button
+          type="button"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(45,140,255,0.10)',
+            borderRadius: 8,
+            border: '1.5px solid #2d8cff33',
+            padding: '6px 10px',
+            cursor: 'pointer',
+            color: '#7ecfff',
+            fontWeight: 600,
+            fontSize: '1em',
+            transition: 'background 0.2s',
+          }}
+          title="Take screenshot and attach"
+          onClick={async () => {
+            if (window.electron?.ipcRenderer?.invoke) {
+              const res = await window.electron.ipcRenderer.invoke('overlay:take-screenshot');
+              if (res && res.success && res.base64) {
+                setImages(prev => [...prev, { base64: res.base64, mime: res.mime || 'image/png' }]);
+              } else {
+                alert(res?.error || 'Screenshot failed');
+              }
+            }
+          }}
+        >
+          <span style={{ fontSize: 18 }}>📸</span>
+          <span>Screenshot</span>
+        </button>
         <input
           type="text"
           value={input}
@@ -288,7 +319,27 @@ function ChatOverlay() {
           }}
         >Send</button>
         {images.length > 0 && (
-          <span style={{ color: '#7ecfff', fontSize: '0.95em', marginLeft: 8 }}>{images.length} image{images.length > 1 ? 's' : ''} ready</span>
+          <>
+            <span style={{ color: '#7ecfff', fontSize: '0.95em', marginLeft: 8 }}>{images.length} image{images.length > 1 ? 's' : ''} ready</span>
+            <button
+              type="button"
+              onClick={() => setImages([])}
+              style={{
+                marginLeft: 8,
+                background: '#232b3a',
+                color: '#7ecfff',
+                border: '1px solid #2d8cff33',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: '0.95em',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+              }}
+              title="Clear attached images"
+            >
+              Reset Images
+            </button>
+          </>
         )}
       </form>
     </div>
