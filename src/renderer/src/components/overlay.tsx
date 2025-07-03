@@ -335,7 +335,7 @@ function ChatOverlay() {
               }}
               title="Clear attached images"
             >
-              Reset Images
+              🧹 
             </button>
           </>
         )}

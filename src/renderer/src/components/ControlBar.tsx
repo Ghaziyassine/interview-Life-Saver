@@ -38,7 +38,7 @@ export function ControlBar({
   useEffect(() => {
     if (stealth) {
       // Example: minimize to a small bar (width: 60, height: 40)
-      const stealthSize = { width: 500, height: 800 };
+      const stealthSize = { width: 600, height: 800 };
       setSize(stealthSize);
       window.api.main.setSize(stealthSize);
     }
