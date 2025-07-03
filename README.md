@@ -60,6 +60,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 |--------------------|-------------------------------|
 | `Alt + Shift + O`  | Toggle click-through overlay  |
 | `Alt + Shift + I`  | Toggle stealth mode           |
+| `Ctrl+Arrow Keys`  | Move the window               |
 
 ### 📡 IPC Commands
 - Dynamically show/hide overlay
@@ -112,15 +113,6 @@ $ npm run build:mac
 # For Linux
 $ npm run build:linux
 ```
-# Usage
-
-1. **Start the app**: Run in development mode with `npm run dev` or use the appropriate build command for your OS.
-2. **Control the overlay**: Use the control bar to adjust opacity, size, and modes. Access settings for minimize, reset, or close.
-3. **Chat with AI**: Type messages or attach images/screenshots to interact with the Gemini-powered chatbot.
-4. **Keyboard Shortcuts**:
-   - `Alt+Shift+O`: Toggle click-through mode
-   - `Alt+Shift+I`: Toggle stealth mode
-   - `Ctrl+Arrow Keys`: Move the window
 
 ## Environment Variables
 
