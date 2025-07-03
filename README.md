@@ -1,25 +1,87 @@
 
-# electron-app
+# 🧠 StealthOverlay — Undetectable Transparent Overlay for Productivity & Testing
 
-**electron-app** is a modern desktop application built with Electron, React, and TypeScript. It provides a sleek, always-on-top overlay window with a control bar and a built-in AI chatbot powered by Google Gemini (via the Generative Language API). The app is designed for productivity, multitasking, and quick access to AI assistance, with features tailored for seamless desktop integration.
+> A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
 
-## Features
+---
 
-- **Overlay Window**: Transparent, resizable, and always-on-top overlay for quick access.
-- **Control Bar**: Easily adjust opacity, window size, click-through mode, and toggle stealth mode.
-- **Stealth Mode**: Instantly hide the control bar and make the overlay less obtrusive.
-- **Click-Through**: Allow mouse events to pass through the overlay for unobstructed desktop use.
-- **Tray Integration**: Minimize to system tray, restore, or quit from the tray menu.
-- **Global Shortcuts**: Use keyboard shortcuts to toggle click-through, stealth mode, and move the window.
-- **AI Chatbot**: Chat with Gemini (Google Generative Language API) directly in the overlay, with support for text and image input.
-- **Screenshot Support**: Take and send desktop screenshots to the chatbot for context-aware assistance.
-- **Cross-Platform**: Works on Windows, macOS, and Linux.
+## 🚀 Overview
 
-## Screenshots
+**StealthOverlay** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen — without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls (Google Meet), or screen recording software (Xbox Game Bar, Zoom, OBS).
 
-<!-- Add screenshots here if available -->
-![WhatsApp Image 2025-07-02 at 13 53 32](https://github.com/user-attachments/assets/bb33a159-aca2-4d7e-bc7d-8759cdc7eba5)
+Whether you're building an internal assistant, testing anti-cheat systems, or presenting complex workflows with non-invasive overlays, this tool has you covered.
 
+---
+
+## 🎯 Purpose
+
+- ✅ Display real-time info (like AI suggestions, references, or instructions) without disrupting focus.
+- ✅ Bypass focus detection by cheating-prevention systems (great for penetration testing).
+- ✅ Ensure overlays are not captured in common screen shares or recordings.
+- ✅ Provide a hidden UI layer for internal tools or automation.
+- ✅ Useful for:
+  - Interview platforms testing
+  - Screen-share-based demos
+  - Competitive programming
+  - Productivity overlays
+  - Developer assistant UIs
+
+---
+
+## 🛠️ Features
+
+### 🧱 Overlay Core
+- 🔲 `Transparent` and `Always on Top` overlay window.
+- 🪟 `skipTaskbar: true` — hidden from taskbar and `Alt+Tab`.
+- 🖱️ Click-through mode (`setIgnoreMouseEvents`) for complete invisibility.
+- 📐 Adjustable position and size.
+- 🕶️ Optional "stealth mode" toggle via keyboard shortcut.
+
+### 🔥 Stealth Features
+- ✅ Hidden from:
+  - Taskbar / Dock
+  - Alt+Tab window switcher
+  - Google Meet & Zoom tab shares
+  - Windows Xbox Game Bar recordings (`Win + Alt + R`)
+- ✅ Not focusable (doesn’t steal tab focus).
+- ✅ Visible only in true **full display capture** (e.g., OBS Display Capture).
+
+### 🧠 AI Assistant
+- 🤖 Gemini 2.5 Flash integration for real-time question answering or contextual help.
+- 🧾 Markdown-capable responses (ideal for code snippets, tables, explanations).
+- 🔌 Easily switch to any other LLM endpoint.
+
+### 🎮 Keyboard Shortcuts
+| Hotkey             | Action                        |
+|--------------------|-------------------------------|
+| `Alt + Shift + O`  | Toggle click-through overlay  |
+| `Alt + Shift + I`  | Toggle stealth mode           |
+
+### 📡 IPC Commands
+- Dynamically show/hide overlay
+- Update overlay content
+- Change position, opacity, and size
+- Switch between stealth and interactive modes
+
+---
+
+## 🖥️ Technologies Used
+
+- 🧪 **Electron**
+- ⚡ **Node.js**
+- 🧩 **Google Gemini 2.5 Flash API**
+- 🎯 **IPC for renderer ⇆ main communication**
+- 💡 Optional: OBS, Zoom, Meet for validation
+
+---
+
+## 📦 Getting Started
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/yourusername/stealth-overlay.git
+cd stealth-overlay
 
 
 ### Install
