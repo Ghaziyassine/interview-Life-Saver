@@ -82,7 +82,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 ```bash
 git clone https://github.com/yourusername/stealth-overlay.git
 cd stealth-overlay
-
+```
 
 ### Install
 
