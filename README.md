@@ -32,7 +32,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 
 ### 🧱 Overlay Core
 - 🔲 `Transparent` and `Always on Top` overlay window.
-- 🪟 `skipTaskbar: true` — hidden from taskbar and `Alt+Tab`.
+- 🪟 Hidden from taskbar and `Alt+Tab`.
 - 🖱️ Click-through mode (`setIgnoreMouseEvents`) for complete invisibility.
 - 📐 Adjustable position and size.
 - 🕶️ Optional "stealth mode" toggle via keyboard shortcut.
