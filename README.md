@@ -5,6 +5,10 @@
 
 ---
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e49c81cd-719d-4347-8f60-0f88b542e54d" width="500" />
+</p>
+
 ## 🚀 Overview
 
 **StealthOverlay** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen — without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls (Google Meet), or screen recording software (Xbox Game Bar, Zoom, OBS).
