@@ -18,13 +18,9 @@
 ## Screenshots
 
 <!-- Add screenshots here if available -->
-
-## Getting Started
-
-## Recommended IDE Setup
+![WhatsApp Image 2025-07-02 at 13 53 32](https://github.com/user-attachments/assets/bb33a159-aca2-4d7e-bc7d-8759cdc7eba5)
 
 
-## Project Setup
 
 ### Install
 
