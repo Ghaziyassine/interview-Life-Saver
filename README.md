@@ -40,7 +40,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 - 🖱️ Click-through mode (`setIgnoreMouseEvents`) for complete invisibility.
 - 📐 Adjustable position and size.
 - 🕶️ Optional "stealth mode" toggle via keyboard shortcut.
-
+- 📸 Hidden Screenshot capture
 ### 🔥 Stealth Features
 - ✅ Hidden from:
   - Taskbar / Dock
