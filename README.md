@@ -16,7 +16,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 ## 🎯 Purpose
 
 - ✅ Display real-time info (like AI suggestions, references, or instructions) without disrupting focus.
-- ✅ Bypass focus detection by cheating-prevention systems (great for penetration testing).
+- ✅ Bypass focus detection by cheating-prevention systems.
 - ✅ Ensure overlays are not captured in common screen shares or recordings.
 - ✅ Provide a hidden UI layer for internal tools or automation.
 - ✅ Useful for:
