@@ -1,5 +1,5 @@
 
-#  Interview-Life-Saver — Undetectable Transparent Chatbot for cheating
+#  Interview-Life-Saver — Undetectable Transparent Chatbot 
 
 > A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
 
