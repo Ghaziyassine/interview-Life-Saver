@@ -82,7 +82,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 
 ## 📦 Getting Started
 
-### 1. Clone the repo
+### Clone the repo
 
 ```bash
 git clone https://github.com/Ghaziyassine/interview-Life-Saver.git
