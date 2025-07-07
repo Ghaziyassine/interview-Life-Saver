@@ -1,5 +1,5 @@
 
-#  Interview-Life-Saver — Undetectable Transparent Chatbot for cheating
+#  Interview-Life-Saver — Undetectable Transparent Chatbot 
 
 > A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
 
@@ -85,7 +85,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/yourusername/stealth-overlay.git
+git clone https://github.com/Ghaziyassine/interview-Life-Saver.git
 cd interview-Life-Saver
 ```
 
