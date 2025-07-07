@@ -11,7 +11,7 @@
 
 ## 🚀 Overview
 
-**Interview-Life-Saver** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen — without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls (Google Meet), or screen recording software (Xbox Game Bar, Zoom, OBS).
+**Interview-Life-Saver** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen — without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls, or screen recording software (Xbox Game Bar).
 
 Whether you're building an internal assistant, testing anti-cheat systems, or presenting complex workflows with non-invasive overlays, this tool has you covered.
 
