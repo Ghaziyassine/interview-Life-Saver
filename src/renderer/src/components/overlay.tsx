@@ -82,6 +82,40 @@ function ChatOverlay() {
     Promise.all(readers).then(setImages);
   };
 
+  // Handle paste event for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!e.clipboardData) return;
+      const items = Array.from(e.clipboardData.items);
+      const imageItems = items.filter(item => item.type.startsWith('image/'));
+      if (imageItems.length === 0) return;
+      e.preventDefault();
+      const readers = imageItems.map(item => {
+        const file = item.getAsFile();
+        if (!file) return null;
+        return new Promise<{ base64: string; mime: string }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const base64 = result.split(',')[1];
+            resolve({ base64, mime: file.type });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }).filter(Boolean) as Promise<{ base64: string; mime: string }>[];
+      if (readers.length > 0) {
+        Promise.all(readers).then(newImages => {
+          setImages(prev => [...prev, ...newImages]);
+        });
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, []);
+
   const sendPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     const prompt = input.trim();

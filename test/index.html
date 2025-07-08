@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Focus & Cheating Detector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    #log {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+    .warn { color: red; }
+    .ok { color: green; }
+    .info { color: blue; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ Cheating Detection Simulation</h1>
+  <p>This demo tracks focus, visibility, typing speed, and clipboard events.</p>
+  <textarea id="inputBox" rows="5" cols="60" placeholder="Type here to test..."></textarea>
+  <div id="log"></div>
+
+  <script>
+    const logDiv = document.getElementById('log');
+    const inputBox = document.getElementById('inputBox');
+    let lastKeyTime = null;
+
+    function log(msg, cls = 'info') {
+      const p = document.createElement('div');
+      p.className = cls;
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logDiv.appendChild(p);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    // Focus / Tab switch detection
+    window.addEventListener('blur', () => log('❗ Window lost focus (blur)', 'warn'));
+    window.addEventListener('focus', () => log('✅ Window regained focus', 'ok'));
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        log('❗ Tab is hidden (visibilitychange)', 'warn');
+      } else {
+        log('✅ Tab is visible again (visibilitychange)', 'ok');
+      }
+    });
+
+    // Detect Ctrl+C, Ctrl+V, PrintScreen
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'c') {
+        log('⚠️ Ctrl+C detected (copy)', 'warn');
+      }
+      if (e.ctrlKey && e.key === 'v') {
+        log('⚠️ Ctrl+V detected (paste)', 'warn');
+      }
+      if (e.key === 'PrintScreen') {
+        log('⚠️ Possible screenshot taken (PrintScreen)', 'warn');
+      }
+    });
+
+    // Typing speed monitoring
+    inputBox.addEventListener('keydown', (e) => {
+      const now = Date.now();
+      if (lastKeyTime) {
+        const diff = now - lastKeyTime;
+        if (diff < 30) {
+          log(`⚠️ Very fast typing detected (${diff}ms between keys)`, 'warn');
+        }
+      }
+      lastKeyTime = now;
+    });
+
+    log('Page loaded. Monitoring started.', 'ok');
+  </script>
+</body>
+</html>
