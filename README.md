@@ -1,23 +1,38 @@
-#  Interview-Life-Saver — Undetectable Tr### 🔥 Stealth Features
-- ✅ Hidden from:
-  - Taskbar / Dock
-  - Alt+Tab window switcher
-  - Google Meet & Zoom tab shares
-  - Windows Xbox Game Bar recordings (`Win + Alt + R`)
-  - **ALL screen sharing applications and recordings** (using Windows API SetWindowDisplayAffinity)
-- ✅ Not focusable (doesn't steal tab focus).
-- ✅ Enhanced screen capture protection using native Windows API.
-- ✅ Visible only in true **full display capture** (e.g., OBS Display Capture).
 
-### 🛡️ Screen Capture Protection (Windows Only)
-- Uses Windows API `SetWindowDisplayAffinity` with `WDA_EXCLUDEFROMCAPTURE` flag
-- Makes the application window completely invisible in:
-  - All screen recording software
-  - Meeting apps screen sharing (Zoom, Teams, Google Meet, etc.)
-  - System screenshots (PrintScreen, Snipping Tool)
-  - Any third-party screen capture tools
-- The window remains fully visible to the user directly on their screen
-- Toggle protection on/off with a button in the control bar
+#  Interview-Life-Saver — Undetectable Transparent Chatbot 
+
+> A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
+
+---
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/e49c81cd-719d-4347-8f60-0f88b542e54d" width="500" />
+</p>
+
+## 🚀 Overview
+
+**Interview-Life-Saver** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen — without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls, or screen recording software (Xbox Game Bar).
+
+Whether you're building an internal assistant, testing anti-cheat systems, or presenting complex workflows with non-invasive overlays, this tool has you covered.
+
+---
+
+## 🎯 Purpose
+
+- ✅ Display real-time info (like AI suggestions, references, or instructions) without disrupting focus.
+- ✅ Bypass focus detection by cheating-prevention systems.
+- ✅ Ensure overlays are not captured in common screen shares or recordings.
+- ✅ Provide a hidden UI layer for internal tools or automation.
+- ✅ Useful for:
+  - Interview platforms testing
+  - Screen-share-based demos
+  - Competitive programming
+  - Productivity overlays
+  - Developer assistant UIs
+
+---
+
+## 🛠️ Features
 
 ### 🧱 Overlay Core
 - 🔲 `Transparent` and `Always on Top` overlay window.
@@ -26,6 +41,19 @@
 - 📐 Adjustable position and size.
 - 🕶️ Optional "stealth mode" toggle via keyboard shortcut.
 - 📸 Hidden Screenshot capture
+### 🔥 Stealth Features
+- ✅ Hidden from:
+  - Taskbar / Dock
+  - Alt+Tab window switcher
+  - Google Meet & Zoom tab shares
+  - Windows Xbox Game Bar recordings (`Win + Alt + R`)
+- ✅ Not focusable (doesn’t steal tab focus).
+- ✅ Visible only in true **full display capture** (e.g., OBS Display Capture).
+
+### 🧠 AI Assistant
+- 🤖 Gemini 2.5 Flash integration for real-time question answering or contextual help.
+- 🧾 Markdown-capable responses (ideal for code snippets, tables, explanations).
+- 🔌 Easily switch to any other LLM endpoint.
 
 ### 🎮 Keyboard Shortcuts
 | Hotkey             | Action                        |
@@ -63,39 +91,25 @@ cd interview-Life-Saver
 
 ### Install
 
-#### Build Native Add-on (for Screen Capture Protection)
-On Windows, you'll need to build the native add-on for screen capture protection:
-
 ```bash
-# Run the build script (Windows)
-./build-native-addon.bat
-
-# Or manually
-cd native-addon/window-utils
-npm install
-npm run rebuild
-cd ../../
+$ npm install
 ```
 
-> **Note:** The screen capture protection feature requires Visual Studio with C++ desktop development workload and CMake installed.
-
-#### Install Dependencies
+### Development
 
 ```bash
-npm install
+$ npm run dev
 ```
 
-#### Development
+### Build
 
 ```bash
-npm run dev
+# For windows
+$ npm run build:win
+
+# For macOS
+$ npm run build:mac
+
+# For Linux
+$ npm run build:linux
 ```
-
-#### Build
-
-```bash
-# For Windows
-npm run build:win
-```
-
-> **Note:** Currently, the build process is tailored for Windows due to the use of the batch file (`build-native-addon.bat`). If you need to build for macOS or Linux, you would need to adapt the native add-on build process to use platform-specific tools like shell scripts or Makefiles. Let me know if you'd like guidance on this!
