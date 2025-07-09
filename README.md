@@ -96,10 +96,6 @@ npm run dev
 ```bash
 # For Windows
 npm run build:win
-
-# For macOS
-npm run build:mac
-
-# For Linux
-npm run build:linux
 ```
+
+> **Note:** Currently, the build process is tailored for Windows due to the use of the batch file (`build-native-addon.bat`). If you need to build for macOS or Linux, you would need to adapt the native add-on build process to use platform-specific tools like shell scripts or Makefiles. Let me know if you'd like guidance on this!
