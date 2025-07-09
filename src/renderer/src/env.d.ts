@@ -7,6 +7,15 @@ declare interface MainAPI {
   onClickThroughToggled: (cb: (state: boolean) => void) => void;
   closeApp: () => void;
   minimize: () => void;
+  // Screen capture protection methods
+  hideFromCapture: () => Promise<boolean>;
+  showInCapture: () => Promise<boolean>;
+  getCaptureState: () => Promise<{ 
+    supported: boolean; 
+    hidden?: boolean; 
+    affinity?: number; 
+    error?: string 
+  }>;
 }
 
 declare interface ChatbotAPI {

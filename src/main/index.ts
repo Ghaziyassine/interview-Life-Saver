@@ -11,6 +11,30 @@ import icon from '../../resources/icon.png?asset'
 // Tray icon reference
 let tray: Tray | null = null;
 import fetch from 'node-fetch';
+// Import native addon for window display affinity
+// Define interface for the native addon
+interface WindowUtils {
+  WDA_NONE: number;
+  WDA_MONITOR: number;
+  WDA_EXCLUDEFROMCAPTURE: number;
+  hideFromCapture: (handle: number) => boolean;
+  showInCapture: (handle: number) => boolean;
+  getDisplayAffinity: (handle: number) => number;
+  setWindowDisplayAffinity: (handle: number, affinity: number) => boolean;
+  resetWindowDisplayAffinity: (handle: number) => boolean;
+}
+
+// Try to load the native addon module with proper error handling
+let windowUtils: WindowUtils | null = null;
+try {
+  if (process.platform === 'win32') {
+    windowUtils = require('window-utils') as WindowUtils;
+    console.log('Screen capture protection module loaded successfully.');
+  }
+} catch (err: any) {
+  console.error('Failed to load screen capture protection module:', err.message);
+  console.warn('Screen capture protection will not be available.');
+}
 
 // Overlay window logic (merged from overlay.ts)
 let overlayWindow: BrowserWindow | null = null
@@ -193,6 +217,14 @@ function createWindow(): void {
   // Show window by default
   mainWindow.on('ready-to-show', () => {
     mainWindow.show();
+    
+    // Hide window from screen capture (Windows only)
+    if (process.platform === 'win32' && windowUtils) {
+      // Small delay to ensure the window is fully created and ready
+      setTimeout(() => {
+        hideWindowFromCapture(mainWindow);
+      }, 500);
+    }
   });
 
   // Create tray icon if not already created
@@ -250,10 +282,11 @@ function createWindow(): void {
   app.on('before-quit', () => {
     isQuitting = true;
   });
-  mainWindow.on('close', (event: Electron.Event) => {
+  mainWindow.on('close', (_event: Electron.Event) => {
     if (!isQuitting) {
       // Only hide on minimize, allow close
-      // Remove event.preventDefault();
+      // Note: if you want to prevent closing, use:
+      // event.preventDefault();
     }
   });
 
@@ -438,6 +471,80 @@ ipcMain.on('main:close-app', () => {
   const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
   if (win) win.close()
 })
+
+// Function to hide a window from screen capture (only works on Windows)
+function hideWindowFromCapture(window: BrowserWindow): boolean {
+  if (process.platform !== 'win32' || !windowUtils) {
+    console.log('hideWindowFromCapture: Not supported on this platform');
+    return false;
+  }
+  
+  try {
+    const handle = window.getNativeWindowHandle().readUInt32LE(0);
+    const result = windowUtils.hideFromCapture(handle);
+    console.log(`Window hidden from screen capture: ${result ? 'Success' : 'Failed'}`);
+    return result;
+  } catch (err) {
+    console.error('Failed to hide window from screen capture:', err);
+    return false;
+  }
+}
+
+// Function to show window in screen capture again (revert to normal)
+function showWindowInCapture(window: BrowserWindow): boolean {
+  if (process.platform !== 'win32' || !windowUtils) {
+    console.log('showWindowInCapture: Not supported on this platform');
+    return false;
+  }
+  
+  try {
+    const handle = window.getNativeWindowHandle().readUInt32LE(0);
+    const result = windowUtils.showInCapture(handle);
+    console.log(`Window capture protection removed: ${result ? 'Success' : 'Failed'}`);
+    return result;
+  } catch (err) {
+    console.error('Failed to show window in screen capture:', err);
+    return false;
+  }
+}
+
+// IPC handlers for screen capture visibility control
+ipcMain.handle('main:hide-from-capture', () => {
+  if (mainWindowRef) {
+    return hideWindowFromCapture(mainWindowRef);
+  }
+  return false;
+});
+
+ipcMain.handle('main:show-in-capture', () => {
+  if (mainWindowRef) {
+    return showWindowInCapture(mainWindowRef);
+  }
+  return false;
+});
+
+ipcMain.handle('main:get-capture-state', () => {
+  if (process.platform !== 'win32' || !windowUtils || !mainWindowRef) {
+    return { supported: false };
+  }
+  
+  try {
+    const handle = mainWindowRef.getNativeWindowHandle().readUInt32LE(0);
+    const affinity = windowUtils.getDisplayAffinity(handle);
+    return { 
+      supported: true,
+      hidden: affinity === windowUtils.WDA_EXCLUDEFROMCAPTURE,
+      affinity
+    };
+  } catch (err) {
+    console.error('Failed to get window capture state:', err);
+    return { 
+      supported: true, 
+      error: String(err),
+      hidden: false
+    };
+  }
+});
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

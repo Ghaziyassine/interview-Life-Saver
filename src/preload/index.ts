@@ -21,6 +21,10 @@ const mainAPI = {
   onClickThroughToggled: (cb) => ipcRenderer.on('main:click-through-toggled', (_e, state) => cb(state)),
   closeApp: () => ipcRenderer.send('main:close-app'),
   minimize: () => ipcRenderer.send('main:minimize'),
+  // Screen capture control
+  hideFromCapture: () => ipcRenderer.invoke('main:hide-from-capture'),
+  showInCapture: () => ipcRenderer.invoke('main:show-in-capture'),
+  getCaptureState: () => ipcRenderer.invoke('main:get-capture-state')
 }
 
 const chatbotAPI = {

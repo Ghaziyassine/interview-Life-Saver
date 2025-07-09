@@ -1,5 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
+// Extend the existing window.api interface with the screen capture protection methods
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -20,13 +21,23 @@ declare global {
         setSize: (size: { width: number; height: number }) => void
         setClickThrough: (clickThrough: boolean) => void
         onClickThroughToggled?: (cb: (state: boolean) => void) => void
-        closeApp: () => void // Added closeApp method
-        minimize: () => void // Added minimize method
-        // Screen capture control
+        closeApp: () => void
+        minimize: () => void
+        // Screen capture protection methods
         hideFromCapture: () => Promise<boolean>
         showInCapture: () => Promise<boolean>
-        getCaptureState: () => Promise<{ supported: boolean; hidden?: boolean; affinity?: number; error?: string }>
+        getCaptureState: () => Promise<{ 
+          supported: boolean; 
+          hidden?: boolean; 
+          affinity?: number; 
+          error?: string 
+        }>
+      }
+      chatbot: {
+        askMcp: (prompt: any) => Promise<any>
       }
     }
   }
 }
+
+export {}

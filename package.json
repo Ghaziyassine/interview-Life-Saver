@@ -26,7 +26,8 @@
     "dotenv": "^17.0.0",
     "electron-updater": "^6.3.9",
     "node-fetch": "^2.7.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "window-utils": "file:native-addon/window-utils"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

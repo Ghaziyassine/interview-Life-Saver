@@ -1,4 +1,5 @@
-// import { useEffect, useRef, useState } from 'react';
+import { icons } from '@renderer/assets/icons';
+import { useEffect, useState } from 'react';
 
 interface ControlBarProps {
   opacity: number;
@@ -16,9 +17,6 @@ interface ControlBarProps {
   setStealth: (v: boolean) => void;
 }
 
-import { icons } from '@renderer/assets/icons';
-import { useEffect } from 'react';
-
 export function ControlBar({
   opacity,
   setOpacity,
@@ -34,6 +32,47 @@ export function ControlBar({
   stealth,
   setStealth,
 }: ControlBarProps) {
+  // State for screen capture protection
+  const [isHiddenFromCapture, setIsHiddenFromCapture] = useState(true);
+  const [captureProtectionSupported, setCaptureProtectionSupported] = useState(false);
+  // Check if screen capture protection is supported on this platform
+  useEffect(() => {
+    const checkCaptureState = async () => {
+      try {
+        // Use type assertion if TypeScript still has issues
+        const main = window.api.main as any;
+        const state = await main.getCaptureState();
+        setCaptureProtectionSupported(state.supported);
+        if (state.supported) {
+          setIsHiddenFromCapture(state.hidden || false);
+        }
+      } catch (err) {
+        console.error('Failed to check capture state:', err);
+      }
+    };
+    
+    checkCaptureState();
+  }, []);
+  // Toggle screen capture protection
+  const toggleCaptureProtection = async () => {
+    try {
+      // Use type assertion if TypeScript still has issues
+      const main = window.api.main as any;
+      let result;
+      if (isHiddenFromCapture) {
+        result = await main.showInCapture();
+      } else {
+        result = await main.hideFromCapture();
+      }
+      
+      if (result) {
+        setIsHiddenFromCapture(!isHiddenFromCapture);
+      }
+    } catch (err) {
+      console.error('Failed to toggle capture protection:', err);
+    }
+  };
+
   // Automatically resize the frame when stealth mode is activated
   useEffect(() => {
     if (stealth) {
@@ -43,12 +82,15 @@ export function ControlBar({
       window.api.main.setSize(stealthSize);
     }
   }, [stealth]);
-  const CONTROL_BAR_MIN_WIDTH = 420;
+  // Define constants (used in return JSX for minWidth)
+  const CONTROL_BAR_MIN_WIDTH = 420; // Used in div style minWidth below
   const changeOpacity = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = parseFloat(e.target.value);
     setOpacity(v);
     window.api.main.setOpacity(v);
   };
+  // Uncomment if you need to use the size controls again
+  /* 
   const changeSize = () => {
     const w = parseInt((document.getElementById('overlay-width') as HTMLInputElement).value);
     const h = parseInt((document.getElementById('overlay-height') as HTMLInputElement).value);
@@ -60,8 +102,7 @@ export function ControlBar({
       window.api.main.setSize({ width: w, height: h });
     }
   };
-
-  
+  */
 
   return (
     <div
@@ -80,7 +121,7 @@ export function ControlBar({
         gap: 18,
         backdropFilter: 'blur(8px)',
         border: '1.5px solid #444',
-        minWidth: 420,
+        minWidth: CONTROL_BAR_MIN_WIDTH,
         opacity: stealth ? 0 : 1,
         pointerEvents: stealth ? 'none' : 'auto',
         transition: 'opacity 0.5s cubic-bezier(.4,0,.2,1)',
@@ -102,7 +143,32 @@ export function ControlBar({
           display: 'flex',
           alignItems: 'center',
         }}
-      >{stealth ? <icons.unlock /> : <icons.lock />}</button>
+      >
+        {stealth ? <icons.unlock /> : <icons.lock />}
+      </button>
+      
+      {/* Screen Capture Protection Toggle Button (Windows only) */}
+      {captureProtectionSupported && (
+        <button
+          title={isHiddenFromCapture ? 'Disable Screen Capture Protection' : 'Enable Screen Capture Protection'}
+          onClick={toggleCaptureProtection}
+          style={{
+            background: isHiddenFromCapture ? '#2d8cff' : '#444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '0.5em 1em',
+            fontSize: 20,
+            cursor: 'pointer',
+            marginRight: 8,
+            transition: 'background 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          {isHiddenFromCapture ? <icons.shield /> : <icons.shieldOff />}
+        </button>
+      )}
       <label title="Opacity" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <span style={{ fontSize: 18 }}>🌫️</span>
         <input
@@ -154,8 +220,10 @@ export function ControlBar({
           transition: 'box-shadow 0.3s',
           outline: toggleAnim ? '2px solid #2d8cff' : undefined,
         }}
-      >🖱️</button>
-      
+      >
+        🖱️
+      </button>
+
       <button
         title="Settings"
         onClick={() => setShowSettings(!showSettings)}
@@ -169,7 +237,9 @@ export function ControlBar({
           cursor: 'pointer',
           position: 'relative',
         }}
-      >⚙️</button>
+      >
+        ⚙️
+      </button>
       {showSettings && (
         <div
           ref={settingsRef}
@@ -236,6 +306,22 @@ export function ControlBar({
             }}
           >
             ❌ Close App
+          </button>
+          <button
+            onClick={toggleCaptureProtection}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            {isHiddenFromCapture ? '👁️‍🗨️ Show in Capture' : '🚫 Hide from Capture'}
           </button>
         </div>
       )}
