@@ -68,38 +68,38 @@ On Windows, you'll need to build the native add-on for screen capture protection
 
 ```bash
 # Run the build script (Windows)
-.\build-native-addon.bat
+./build-native-addon.bat
 
 # Or manually
-cd native-addon\window-utils
+cd native-addon/window-utils
 npm install
 npm run rebuild
-cd ..\..
+cd ../../
 ```
 
 > **Note:** The screen capture protection feature requires Visual Studio with C++ desktop development workload and CMake installed.
 
-### Install Dependencies
+#### Install Dependencies
 
 ```bash
-$ npm install
+npm install
 ```
 
-### Development
+#### Development
 
 ```bash
-$ npm run dev
+npm run dev
 ```
 
-### Build
+#### Build
 
 ```bash
-# For windows
-$ npm run build:win
+# For Windows
+npm run build:win
 
 # For macOS
-$ npm run build:mac
+npm run build:mac
 
 # For Linux
-$ npm run build:linux
+npm run build:linux
 ```
