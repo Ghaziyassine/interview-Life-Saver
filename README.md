@@ -91,6 +91,19 @@ cd interview-Life-Saver
 
 ### Install
 
+#### Build Native Add-on (for Screen Capture Protection)
+On Windows, you'll need to build the native add-on for screen capture protection:
+
+```bash
+# Run the build script (Windows)
+./build-native-addon.bat
+
+# Or manually
+cd native-addon/window-utils
+npm install
+npm run rebuild
+cd ../../
+```
 ```bash
 $ npm install
 ```
