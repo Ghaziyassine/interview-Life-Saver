@@ -1,4 +1,3 @@
-
 #  Interview-Life-Saver — Undetectable Transparent Chatbot 
 
 > A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
@@ -92,7 +91,8 @@ cd interview-Life-Saver
 ### Install
 
 #### Build Native Add-on (for Screen Capture Protection)
-On Windows, you'll need to build the native add-on for screen capture protection:
+
+On Windows:
 
 ```bash
 # Run the build script (Windows)
@@ -104,6 +104,25 @@ npm install
 npm run rebuild
 cd ../../
 ```
+
+On macOS/Linux:
+
+```bash
+# Navigate to the native-addon directory
+cd native-addon/window-utils
+
+# Install dependencies
+npm install
+
+# Build using cmake-js
+npx cmake-js compile
+
+# Return to the project root
+cd ../../
+```
+
+> **Note:** Ensure you have CMake installed along with the necessary development tools for your platform (e.g., Xcode command-line tools for macOS, GCC/Clang for Linux).
+
 ```bash
 $ npm install
 ```
