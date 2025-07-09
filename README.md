@@ -102,7 +102,8 @@ This approach ensures that the app's window is hidden from all screen sharing an
 - ⚡ **Node.js**
 - 🧩 **Google Gemini 2.5 Flash API**
 - 🎯 **IPC for renderer ⇆ main communication**
-- 💡 Optional: OBS, Zoom, Meet for validation
+- 🛠️ **Native C++ Addon** (for screen capture protection)
+- 🏗️ **CMake** (cross-platform build system)
 
 ---
 
