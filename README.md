@@ -44,7 +44,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 - ✅ Hidden from:
   - Taskbar / Dock
   - Alt+Tab window switcher
-  - Google Meet & Zoom tab shares
+  - Entire screen capture (Google Meet, Zoom,Teams, Discord.... ).
   - Windows Xbox Game Bar recordings (`Win + Alt + R`)
 - ✅ Not focusable (doesn’t steal tab focus).
 - ✅ Visible only in true **full display capture** (e.g., OBS Display Capture).
