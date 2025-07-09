@@ -69,6 +69,33 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 
 ---
 
+## 🛡️ How Screen Share Protection Works
+
+The application uses the Windows API function `SetWindowDisplayAffinity` to hide its window from screen sharing and recording tools. This ensures that the window remains visible to the user but is invisible to external capture tools.
+
+#### Key Details:
+
+1. **API Used**:
+   - The `SetWindowDisplayAffinity` function is part of the Windows API.
+   - The flag `WDA_EXCLUDEFROMCAPTURE` is used to make the window invisible to screen capture tools.
+
+2. **Implementation**:
+   - A native C++ addon was created to interact with the Windows API.
+   - The addon exposes functions like `setWindowDisplayAffinity`, `resetWindowDisplayAffinity`, and `getWindowDisplayAffinity` to JavaScript via Node.js bindings.
+   - These functions are called from the Electron main process to apply the display affinity settings to the app's window.
+
+3. **Behavior**:
+   - When `setWindowDisplayAffinity` is called with the `WDA_EXCLUDEFROMCAPTURE` flag, the window becomes invisible to screen sharing and recording tools like Zoom, Teams, and OBS.
+   - The window remains visible to the user directly on their screen.
+
+4. **Integration**:
+   - The native addon is integrated into the Electron app and controlled via IPC commands from the renderer process.
+   - Users can toggle the screen capture protection on or off using the app's UI.
+
+This approach ensures that the app's window is hidden from all screen sharing and recording tools while remaining fully functional and visible to the user.
+
+---
+
 ## 🖥️ Technologies Used
 
 - 🧪 **Electron**
