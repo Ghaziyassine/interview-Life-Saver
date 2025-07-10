@@ -118,7 +118,6 @@ git clone https://github.com/Ghaziyassine/interview-Life-Saver.git
 cd interview-Life-Saver
 ```
 
-### Install
 
 #### Build Native Add-on (for Screen Capture Protection)
 
@@ -134,6 +133,7 @@ npm install
 npm run rebuild
 cd ../../
 ```
+### Install
 
 ```bash
 $ npm install
