@@ -71,7 +71,9 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 
 ## 🛡️ How Screen Share Protection Works
 
-The application uses the Windows API function `SetWindowDisplayAffinity` to hide its window from screen sharing and recording tools. This ensures that the window remains visible to the user but is invisible to external capture tools.
+The application uses the Windows API function `SetWindowDisplayAffinity` to hide its window from screen sharing and recording tools. This functionality is currently available **only on Windows**.
+
+For more technical details and API usage, refer to the [Window Utils Native Addon README](native-addon/window-utils/README.md).
 
 #### Key Details:
 
@@ -132,24 +134,6 @@ npm install
 npm run rebuild
 cd ../../
 ```
-
-On macOS/Linux:
-
-```bash
-# Navigate to the native-addon directory
-cd native-addon/window-utils
-
-# Install dependencies
-npm install
-
-# Build using cmake-js
-npx cmake-js compile
-
-# Return to the project root
-cd ../../
-```
-
-> **Note:** Ensure you have CMake installed along with the necessary development tools for your platform (e.g., Xcode command-line tools for macOS, GCC/Clang for Linux).
 
 ```bash
 $ npm install
