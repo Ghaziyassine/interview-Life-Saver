@@ -121,7 +121,7 @@ cd interview-Life-Saver
 
 #### Build Native Add-on (for Screen Capture Protection)
 
-On Windows:
+On Windows (if you use another OS ignore this):
 
 ```bash
 # Run the build script (Windows)
