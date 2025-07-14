@@ -15,6 +15,7 @@ interface ControlBarProps {
   handleCloseApp: () => void;
   stealth: boolean;
   setStealth: (v: boolean) => void;
+  setCaptureProtectionCallback?: (fn: (enabled: boolean) => Promise<void>) => void;
 }
 
 export function ControlBar({
@@ -31,6 +32,7 @@ export function ControlBar({
   handleCloseApp,
   stealth,
   setStealth,
+  setCaptureProtectionCallback,
 }: ControlBarProps) {
   // State for screen capture protection
   const [isHiddenFromCapture, setIsHiddenFromCapture] = useState(true);
@@ -39,18 +41,19 @@ export function ControlBar({
   useEffect(() => {
     const checkCaptureState = async () => {
       try {
-        // Use type assertion if TypeScript still has issues
         const main = window.api.main as any;
         const state = await main.getCaptureState();
         setCaptureProtectionSupported(state.supported);
         if (state.supported) {
-          setIsHiddenFromCapture(state.hidden || false);
+          // Always enable protection by default
+          await main.hideFromCapture();
+          setIsHiddenFromCapture(true);
         }
       } catch (err) {
         console.error('Failed to check capture state:', err);
       }
     };
-    
+
     checkCaptureState();
   }, []);
   // Toggle screen capture protection
@@ -72,6 +75,22 @@ export function ControlBar({
       console.error('Failed to toggle capture protection:', err);
     }
   };
+
+  // External control for capture protection
+  useEffect(() => {
+    if (setCaptureProtectionCallback) {
+      setCaptureProtectionCallback(async (enabled: boolean) => {
+        const main = window.api.main as any;
+        if (enabled) {
+          await main.hideFromCapture();
+          setIsHiddenFromCapture(true);
+        } else {
+          await main.showInCapture();
+          setIsHiddenFromCapture(false);
+        }
+      });
+    }
+  }, [setCaptureProtectionCallback]);
 
   // Automatically resize the frame when stealth mode is activated
   useEffect(() => {

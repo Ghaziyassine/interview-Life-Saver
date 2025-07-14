@@ -395,28 +395,28 @@ ipcMain.on('main:set-click-through', (_e, clickThrough) => {
 // Screenshot handler: hides all app windows, takes screenshot, restores windows
 import { desktopCapturer } from 'electron';
 ipcMain.handle('overlay:take-screenshot', async () => {
-  // Hide all app windows (main and overlay)
-  const allWindows = BrowserWindow.getAllWindows();
-  allWindows.forEach(win => win.hide());
-  // Wait a bit to ensure windows are hidden
-  await new Promise(res => setTimeout(res, 350));
   // Get primary display
   const display = screen.getPrimaryDisplay();
+  
   // Use desktopCapturer to get screen sources
-  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: display.size.width, height: display.size.height } });
+  const sources = await desktopCapturer.getSources({ 
+    types: ['screen'], 
+    thumbnailSize: { width: display.size.width, height: display.size.height } 
+  });
+  
   // Find the source for the primary display
   let screenSource = sources.find(src => src.display_id == String(display.id));
   if (!screenSource) {
     // fallback: use first source
     screenSource = sources[0];
   }
+  
   let imageBase64: string | null = null;
   if (screenSource) {
     const image = screenSource.thumbnail;
     imageBase64 = image.toPNG().toString('base64');
   }
-  // Restore all windows
-  allWindows.forEach(win => win.show());
+  
   if (imageBase64) {
     return { success: true, base64: imageBase64, mime: 'image/png' };
   } else {
