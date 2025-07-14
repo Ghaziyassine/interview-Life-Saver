@@ -2,62 +2,116 @@ import { useRef, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import ReactMarkdown from 'react-markdown';
 
-// --- Token counting utility (simple estimation) ---
-function estimateTokens(text: string): number {
-  // Roughly 1.3 tokens per word (for English, varies by language/model)
-  return Math.ceil(text.split(/\s+/).length * 1.3);
-}
-
-// --- Summarization utility (very basic, replace with LLM call for better results) ---
-function summarizeMessages(messages: { text: string; from: string }[]): string {
-  // Simple summary: concatenate first and last user/bot messages, or use a placeholder
-  if (messages.length === 0) return '';
-  const first = messages[0];
-  const last = messages[messages.length - 1];
-  return `Summary: Conversation started with "${first.text.slice(0, 40)}..." and most recently "${last.text.slice(0, 40)}..."`;
-}
-
-// --- Prompt builder ---
-function buildPromptContext(
-  allMessages: { text: string; from: string }[],
-  tokenLimit: number
-): { summary: string; recentMessages: { text: string; from: string }[] } {
-  let totalTokens = 0;
-  const reversed: { text: string; from: string }[] = [];
-  // Traverse from end (most recent) backwards
-  for (let i = allMessages.length - 1; i >= 0; i--) {
-    const msg = allMessages[i];
-    const tokens = estimateTokens(msg.text);
-    if (totalTokens + tokens > tokenLimit) break;
-    reversed.push(msg);
-    totalTokens += tokens;
-  }
-  const recentMessages = reversed.reverse();
-  const olderMessages = allMessages.slice(0, allMessages.length - recentMessages.length);
-  const summary = olderMessages.length > 0 ? summarizeMessages(olderMessages) : '';
-  return { summary, recentMessages };
-}
-
 
 
 function ChatOverlay() {
-  const [messages, setMessages] = useState([
-    { text: 'Hello! How can I help you?', from: 'bot' }
+  const [messages, setMessages] = useState<Array<{ text: string; from: string; id?: string }>>([
+    { text: 'Hello! How can I help you?', from: 'bot', id: 'initial' }
   ]);
   const [input, setInput] = useState('');
   // Multiple images: array of { base64, mime }
   const [images, setImages] = useState<{ base64: string; mime: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // In-memory full conversation history (not persisted)
-  const conversationHistory = useRef<{ text: string; from: string }[]>([
-    { text: 'Hello! How can I help you?', from: 'bot' }
+  const conversationHistory = useRef<{ text: string; from: string; id?: string }[]>([
+    { text: 'Hello! How can I help you?', from: 'bot', id: 'initial' }
   ]);
-  // Token limit for prompt context
-  const TOKEN_LIMIT = 1000;
+  
+  // Track which message is being edited (by id)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  // Edit input value
+  const [editInput, setEditInput] = useState('');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Generate unique ID for messages
+  const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Handle message editing
+  const startEditing = (messageId: string, text: string) => {
+    setEditingMessageId(messageId);
+    setEditInput(text);
+  };
+
+  const cancelEditing = () => {
+    setEditingMessageId(null);
+    setEditInput('');
+  };
+
+  const saveEdit = async (messageId: string) => {
+    const editedText = editInput.trim();
+    if (!editedText) return;
+
+    // Find the message index in conversation history
+    const messageIndex = conversationHistory.current.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1) {
+      cancelEditing();
+      return;
+    }
+
+    // Update the message in history
+    conversationHistory.current[messageIndex].text = editedText;
+    
+    // Remove all messages after the edited one (as requested)
+    if (messageIndex < conversationHistory.current.length - 1) {
+      conversationHistory.current = conversationHistory.current.slice(0, messageIndex + 1);
+    }
+
+    // Update UI messages to match the conversation history
+    setMessages(conversationHistory.current.map(msg => ({...msg})));
+
+    // Only generate a new response if the edited message was from a user
+    if (conversationHistory.current[messageIndex].from === 'user') {
+      // Generate a new bot response based on the edited context
+      try {
+        // Build full context from all messages (no token limit)
+        let promptContext = '';
+        for (const msg of conversationHistory.current) {
+          promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
+        }
+
+        const geminiRequest = promptContext;
+
+        // Send the updated context to generate a new bot response
+        let res:any;
+        if (window.electron?.ipcRenderer?.invoke) {
+          res = await window.electron.ipcRenderer.invoke('chatbot:ask-mcp', geminiRequest);
+        } else if (window.api?.chatbot?.askMcp) {
+          res = await window.api.chatbot.askMcp(geminiRequest);
+        }
+        
+        let botMsg = '';
+        if (res?.success) {
+          botMsg = res.answer ?? 'No response';
+        } else {
+          botMsg = res?.error ?? 'Error contacting local LLM';
+        }
+        
+        // Add new bot message to history and UI
+        const botMessageId = generateMessageId();
+        const botMessage = { text: botMsg, from: 'bot', id: botMessageId };
+        
+        conversationHistory.current.push(botMessage);
+        setMessages(prev => [...prev, botMessage]);
+      } catch (err) {
+        const errorMsg = (err && typeof err === 'object' && 'message' in err)
+          ? (err as any).message
+          : String(err);
+        
+        // Add error message
+        const errorMessageId = generateMessageId();
+        const errorMessage = { text: 'Error: ' + errorMsg, from: 'bot', id: errorMessageId };
+        
+        conversationHistory.current.push(errorMessage);
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    }
+
+    // Exit edit mode
+    cancelEditing();
+  };
 
   // Handle multiple image file selection and convert to base64
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,15 +174,17 @@ function ChatOverlay() {
     e.preventDefault();
     const prompt = input.trim();
     if (!prompt && images.length === 0) return;
+    
     // Add user message to history
     let userMsgText = prompt;
     if (images.length > 0) {
       userMsgText = `[${images.length} Image${images.length > 1 ? 's' : ''} sent]` + (prompt ? ' ' + prompt : '');
     }
-    conversationHistory.current.push({ text: userMsgText, from: 'user' });
+    const messageId = generateMessageId();
+    conversationHistory.current.push({ text: userMsgText, from: 'user', id: messageId });
     setMessages((prev) => [
       ...prev,
-      { text: userMsgText, from: 'user' },
+      { text: userMsgText, from: 'user', id: messageId },
     ]);
     setInput('');
 
@@ -153,13 +209,9 @@ function ChatOverlay() {
         ],
       };
     } else {
-      // Text only: build context as before
-      const { summary, recentMessages } = buildPromptContext(conversationHistory.current, TOKEN_LIMIT);
+      // Build full context from conversation history, without token limits for better accuracy
       let promptContext = '';
-      if (summary) {
-        promptContext += summary + '\n';
-      }
-      for (const msg of recentMessages) {
+      for (const msg of conversationHistory.current) {
         promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
       }
       geminiRequest = promptContext;
@@ -170,8 +222,7 @@ function ChatOverlay() {
 
     try {
       // Send the composed prompt context or image+text to the LLM API via IPC (base64 images included)
-      // Use window.electron.ipcRenderer.invoke for IPC transfer
-      let res;
+      let res:any;
       if (window.electron?.ipcRenderer?.invoke) {
         res = await window.electron.ipcRenderer.invoke('chatbot:ask-mcp', geminiRequest);
       } else if (window.api?.chatbot?.askMcp) {
@@ -185,19 +236,21 @@ function ChatOverlay() {
         botMsg = res?.error ?? 'Error contacting local LLM';
       }
       // Add bot message to history
-      conversationHistory.current.push({ text: botMsg, from: 'bot' });
+      const botMessageId = generateMessageId();
+      conversationHistory.current.push({ text: botMsg, from: 'bot', id: botMessageId });
       setMessages((prev) => [
         ...prev,
-        { text: botMsg, from: 'bot' },
+        { text: botMsg, from: 'bot', id: botMessageId },
       ]);
     } catch (err) {
       const errorMsg = (err && typeof err === 'object' && 'message' in err)
         ? (err as any).message
         : String(err);
-      conversationHistory.current.push({ text: 'Error: ' + errorMsg, from: 'bot' });
+      const errorMessageId = generateMessageId();
+      conversationHistory.current.push({ text: 'Error: ' + errorMsg, from: 'bot', id: errorMessageId });
       setMessages((prev) => [
         ...prev,
-        { text: 'Error: ' + errorMsg, from: 'bot' },
+        { text: 'Error: ' + errorMsg, from: 'bot', id: errorMessageId },
       ]);
     }
   };
@@ -229,7 +282,7 @@ function ChatOverlay() {
       }}>
         {messages.map((msg, i) => (
           <div
-            key={i}
+            key={msg.id || i}
             style={{
               background: msg.from === 'bot' ? 'rgba(45,140,255,0.18)' : 'rgba(255,255,255,0.08)',
               color: msg.from === 'bot' ? '#b8e0ff' : '#fff',
@@ -244,12 +297,106 @@ function ChatOverlay() {
               border: msg.from === 'bot' ? '1px solid #2d8cff55' : undefined,
               marginBottom: 4,
               userSelect: 'text',
+              position: 'relative',
+            }}
+            onDoubleClick={() => {
+              // Only allow editing user messages that have an ID
+              if (msg.from === 'user' && 'id' in msg && msg.id) {
+                startEditing(msg.id, msg.text);
+              }
             }}
           >
-            {msg.from === 'bot' ? (
-              <BotMessage text={msg.text} />
+            {/* For editing messages */}
+            {('id' in msg) && editingMessageId === msg.id ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                width: '100%',
+              }}>
+                <textarea
+                  value={editInput}
+                  onChange={(e) => setEditInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '80px',
+                    padding: '8px',
+                    background: 'rgba(0,0,0,0.2)',
+                    color: '#fff',
+                    border: '1px solid #2d8cff',
+                    borderRadius: 8,
+                    fontFamily: 'inherit',
+                    fontSize: '0.95em',
+                    resize: 'vertical',
+                  }}
+                  autoFocus
+                />
+                <div style={{
+                  display: 'flex',
+                  gap: 8,
+                  justifyContent: 'flex-end',
+                }}>
+                  <button
+                    onClick={cancelEditing}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid #7ecfff',
+                      color: '#7ecfff',
+                      borderRadius: 6,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => 'id' in msg && msg.id ? saveEdit(msg.id) : null}
+                    style={{
+                      background: '#2d8cff',
+                      border: 'none',
+                      color: '#fff',
+                      borderRadius: 6,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
             ) : (
-              msg.text
+              <>
+                {msg.from === 'bot' ? (
+                  <BotMessage text={msg.text} />
+                ) : (
+                  <>
+                    {msg.text}
+                    {/* Only show edit button for messages with an ID */}
+                    {'id' in msg && msg.id && (
+                      <button
+                        onClick={() => startEditing(msg.id!, msg.text)}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          right: '2px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'rgba(255,255,255,0.5)',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          fontSize: '0.8em',
+                          opacity: 0,
+                          transition: 'opacity 0.2s',
+                        }}
+                        className="edit-button"
+                        title="Edit message"
+                      >
+                        ✎
+                      </button>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -439,5 +586,14 @@ if (rootDiv) {
   const root = createRoot(rootDiv);
   root.render(<ChatOverlay />);
 }
+
+// Add this CSS somewhere in your component or in a style tag
+const style = document.createElement('style');
+style.textContent = `
+  div:hover .edit-button {
+    opacity: 1;
+  }
+`;
+document.head.appendChild(style);
 
 export { ChatOverlay };
