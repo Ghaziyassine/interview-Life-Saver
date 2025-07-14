@@ -21,7 +21,6 @@ interface ControlBarProps {
 export function ControlBar({
   opacity,
   setOpacity,
-  size,
   setSize,
   clickThrough,
   toggleClickThrough,
