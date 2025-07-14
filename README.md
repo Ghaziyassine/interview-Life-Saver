@@ -61,7 +61,7 @@ Whether you're building an internal assistant, testing anti-cheat systems, or pr
 | `Ctrl+Arrow Keys`  | Move the window               |
 
 ### 📡 IPC Commands
-- Dynamically show/hide overlay
+- show/hide overlay
 - Update overlay content
 - Change position, opacity, and size
 - Switch between stealth and interactive modes
