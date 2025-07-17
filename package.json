@@ -25,6 +25,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "dotenv": "^17.0.0",
     "electron-updater": "^6.3.9",
+    "fs-minipass": "^1.2.7",
     "node-fetch": "^2.7.0",
     "react-markdown": "^10.1.0",
     "window-utils": "file:native-addon/window-utils"

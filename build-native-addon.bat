@@ -3,8 +3,6 @@ echo Building window-utils native addon...
 
 cd native-addon\window-utils
 
-echo Installing specific version of fs-minipass to fix compatibility issues...
-call npm install fs-minipass@1.2.7 --save
 
 echo Installing dependencies with compatibility flags...
 call npm install --legacy-peer-deps
@@ -24,7 +22,6 @@ if %ERRORLEVEL% EQU 0 (
     if exist node_modules\@humanfs rmdir /s /q node_modules\@humanfs 2>nul
     
     echo Updating project dependencies with compatibility flags...
-    call npm install fs-minipass@1.2.7 --save
     call npm install --legacy-peer-deps --force
     
     echo Done! Native addon was built successfully.

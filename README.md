@@ -1,9 +1,16 @@
 #  Interview-Life-Saver — Undetectable Transparent Chatbot 
-
 > A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
 
----
 
+## 📝 Requirements
+
+- **Windows 10/11** (for screen capture protection)
+- **Node.js** (v16 or later recommended)
+- **npm** (comes with Node.js)
+- **Visual Studio** (with C++ desktop development workload, for native addon)
+- **CMake** (for building the native addon)
+- **Google Gemini API Key** (for AI assistant features)
+---
 <p align="center">
   <img src="https://github.com/user-attachments/assets/e49c81cd-719d-4347-8f60-0f88b542e54d" width="500" />
 </p>

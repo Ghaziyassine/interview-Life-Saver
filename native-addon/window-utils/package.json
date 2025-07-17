@@ -13,6 +13,7 @@
   "dependencies": {
     "bindings": "^1.5.0",
     "cmake-js": "^7.2.1",
+    "fs-minipass": "^1.2.7",
     "node-addon-api": "^7.0.0",
     "node-gyp": "^10.0.1"
   }
