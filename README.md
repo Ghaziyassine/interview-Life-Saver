@@ -117,7 +117,10 @@ git clone https://github.com/Ghaziyassine/interview-Life-Saver.git
 cd interview-Life-Saver
 ```
 
-
+#### Create .env file
+```bash
+GEMINI_API_KEY=your_api_key_here
+```
 #### Build Native Add-on (for Screen Capture Protection)
 
 On Windows (if you use another OS ignore this):
@@ -125,14 +128,9 @@ On Windows (if you use another OS ignore this):
 ```bash
 # Run the build script (Windows)
 ./build-native-addon.bat
-
-# Or manually
-cd native-addon/window-utils
-npm install
-npm run rebuild
-cd ../../
 ```
- **Note:** The screen capture protection feature requires Visual Studio with C++ desktop development workload and CMake installed.
+
+ **Note:** Building the Native Add-on requires Visual Studio with C++ desktop development workload and CMake installed in your machine.
  
 ### Install
 
