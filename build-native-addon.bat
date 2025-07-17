@@ -4,9 +4,10 @@ echo Building window-utils native addon...
 cd native-addon\window-utils
 
 echo Installing dependencies...
-call npm install
+call npm install --legacy-peer-deps
 
 echo Building with npm run rebuild...
+set NODE_OPTIONS=--no-node-snapshot
 call npm run rebuild
 if %ERRORLEVEL% EQU 0 (
     echo Successfully built native addon!
