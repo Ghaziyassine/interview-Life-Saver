@@ -130,7 +130,7 @@ On Windows (if you use another OS ignore this):
 ./build-native-addon.bat
 ```
 
- **Note:** Building the Native Add-on requires Visual Studio with C++ desktop development workload and CMake installed.
+ **Note:** Building the Native Add-on requires Visual Studio with C++ desktop development workload and CMake installed in your machine.
  
 ### Install
 
