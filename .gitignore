@@ -6,4 +6,4 @@ out
 *.log*
 .env
 run.bat
-                                      
+native-addon/window-utils/build/
