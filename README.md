@@ -132,7 +132,7 @@ npm install
 npm run rebuild
 cd ../../
 ```
- **Note:** The screen capture protection feature requires Visual Studio with C++ desktop development workload and CMake installed.
+ **Note:** Building the Native Add-on requires Visual Studio with C++ desktop development workload and CMake installed.
  
 ### Install
 
