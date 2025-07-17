@@ -126,11 +126,6 @@ On Windows (if you use another OS ignore this):
 # Run the build script (Windows)
 ./build-native-addon.bat
 
-# Or manually
-cd native-addon/window-utils
-npm install
-npm run rebuild
-cd ../../
 ```
  **Note:** Building the Native Add-on requires Visual Studio with C++ desktop development workload and CMake installed.
  
