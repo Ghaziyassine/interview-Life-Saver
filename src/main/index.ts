@@ -187,9 +187,9 @@ function createWindow(): void {
   // Create the browser window.
   const { height } = screen.getPrimaryDisplay().workAreaSize;
   const mainWindow: BrowserWindow = new BrowserWindow({
-    width: 440, // Set width to 440px
+    width: 600, // Set width to 440px
     height: height, // Set height to full available height
-    minWidth: 420, // Enforce minimum width
+    minWidth: 600, // Enforce minimum width
     minHeight: 420, // Enforce minimum height
     x: 0, // Position at the left edge
     y: 0, // Position at the top

@@ -5,6 +5,5 @@ out
 .eslintcache
 *.log*
 .env
-run.bat
 native-addon/window-utils/build/
 build/window-utils.node

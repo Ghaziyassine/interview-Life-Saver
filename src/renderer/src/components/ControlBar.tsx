@@ -241,7 +241,7 @@ export function ControlBar({
       >
         🖱️
       </button>
-
+      
       <button
         title="Settings"
         onClick={() => setShowSettings(!showSettings)}
@@ -274,22 +274,7 @@ export function ControlBar({
             minWidth: 120,
           }}
         >
-          <button
-            onClick={() => window.api.main.minimize()}
-            style={{
-              background: 'none',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '0.5em 0',
-              fontSize: 16,
-              width: '100%',
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            🗕 Minimize App
-          </button>
+          
           <button
             onClick={() => {
               // Reset context: refresh conversation
@@ -324,25 +309,28 @@ export function ControlBar({
             }}
           >
             ❌ Close App
-          </button>
-          <button
-            onClick={toggleCaptureProtection}
-            style={{
-              background: 'none',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '0.5em 0',
-              fontSize: 16,
-              width: '100%',
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            {isHiddenFromCapture ? '👁️‍🗨️ Show in Capture' : '🚫 Hide from Capture'}
-          </button>
+          </button>       
         </div>
+        
       )}
+      <button
+            title="Minimize"
+            onClick={() => window.api.main.minimize()}
+            style={{
+          background: clickThrough ? '#2d8cff' : '#444',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '0.5em 1em',
+          fontSize: 20,
+          cursor: 'pointer',
+          boxShadow: toggleAnim ? '0 0 0 4px #2d8cff88' : undefined,
+          transition: 'box-shadow 0.3s',
+          outline: toggleAnim ? '2px solid #2d8cff' : undefined,
+        }}
+          >
+            🗕 
+          </button>
     </div>
   );
 }
