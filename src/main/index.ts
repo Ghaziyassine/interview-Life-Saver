@@ -8,6 +8,8 @@ import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu 
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+// Import the config file
+import { CONFIG } from './config'
 // Tray icon reference
 let tray: Tray | null = null;
 import fetch from 'node-fetch';
@@ -424,7 +426,7 @@ ipcMain.handle('overlay:take-screenshot', async () => {
   }
 });
 ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const GEMINI_API_KEY = CONFIG.GEMINI_API_KEY;
   if (!GEMINI_API_KEY) {
     return { success: false, error: 'Gemini API key not set in environment variable GEMINI_API_KEY.' };
   }
