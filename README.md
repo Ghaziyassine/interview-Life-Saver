@@ -1,15 +1,15 @@
 #  Interview-Life-Saver — Undetectable Transparent Chatbot 
-> A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays — all without interfering with the user's active window or appearing in screen shares or recordings.
+> A powerful Electron-based overlay engine designed for live content display, AI assistance, and transparent overlays  all without interfering with the user's active window or appearing in screen shares or recordings.
 
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/e49c81cd-719d-4347-8f60-0f88b542e54d" width="500" />
+<img width="600"  alt="image" src="https://github.com/user-attachments/assets/6b1bb4ff-005d-4f79-9428-bc7fae22d71e" />
 </p>
 
 ## 🚀 Overview
 
-**Interview-Life-Saver** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen — without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls, or screen recording software.
+**Interview-Life-Saver** is a desktop productivity tool and overlay manager built with Electron. It allows you to display real-time, interactive, or static content on top of your screen without triggering detection from applications like coding test platforms (HackerRank, CodeSignal), video calls, or screen recording software.
 
 Whether you're building an internal assistant, testing anti-cheat systems, or presenting complex workflows with non-invasive overlays, this tool has you covered.
 
