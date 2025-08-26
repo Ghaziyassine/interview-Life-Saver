@@ -2,7 +2,14 @@ import { useRef, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import ReactMarkdown from 'react-markdown';
 
-// Create a custom hook to handle localStorage for system prompt
+// Define types for system prompts
+interface SystemPrompt {
+  id: string;
+  name: string;
+  content: string;
+}
+
+// Create a custom hook to handle localStorage for system prompts
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
@@ -32,15 +39,108 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 function SystemPromptModal({ 
   isOpen, 
   onClose, 
-  systemPrompt, 
-  setSystemPrompt 
+  systemPrompts, 
+  activePromptId,
+  setSystemPrompts,
+  setActivePromptId
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  systemPrompt: string; 
-  setSystemPrompt: (prompt: string) => void 
+  systemPrompts: SystemPrompt[];
+  activePromptId: string | null;
+  setSystemPrompts: (prompts: SystemPrompt[]) => void;
+  setActivePromptId: (id: string | null) => void;
 }) {
-  const [inputValue, setInputValue] = useState(systemPrompt);
+  const [editMode, setEditMode] = useState<'create' | 'edit' | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(activePromptId);
+  const [promptName, setPromptName] = useState('');
+  const [promptContent, setPromptContent] = useState('');
+  
+  // Reset form when modal opens or closes
+  useEffect(() => {
+    if (isOpen) {
+      setEditMode(null);
+      setSelectedPromptId(activePromptId);
+    }
+  }, [isOpen, activePromptId]);
+  
+  // Load prompt data when edit mode changes
+  useEffect(() => {
+    if (editMode === 'edit' && selectedPromptId) {
+      const prompt = systemPrompts.find(p => p.id === selectedPromptId);
+      if (prompt) {
+        setPromptName(prompt.name);
+        setPromptContent(prompt.content);
+      }
+    } else if (editMode === 'create') {
+      setPromptName('');
+      setPromptContent('');
+    }
+  }, [editMode, selectedPromptId, systemPrompts]);
+  
+  const handleCreatePrompt = () => {
+    setEditMode('create');
+    setPromptName('');
+    setPromptContent('');
+  };
+  
+  const handleEditPrompt = () => {
+    if (!selectedPromptId) return;
+    setEditMode('edit');
+  };
+  
+  const handleDeletePrompt = () => {
+    if (!selectedPromptId) return;
+    
+    // Remove the prompt
+    const newPrompts = systemPrompts.filter(p => p.id !== selectedPromptId);
+    setSystemPrompts(newPrompts);
+    
+    // If the active prompt was deleted, set active to null
+    if (activePromptId === selectedPromptId) {
+      setActivePromptId(null);
+    }
+    
+    // Reset selection
+    setSelectedPromptId(null);
+  };
+  
+  const handleSavePrompt = () => {
+    if (!promptName.trim() || !promptContent.trim()) return;
+    
+    if (editMode === 'create') {
+      // Create new prompt
+      const newPrompt: SystemPrompt = {
+        id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: promptName.trim(),
+        content: promptContent.trim()
+      };
+      
+      setSystemPrompts([...systemPrompts, newPrompt]);
+      setSelectedPromptId(newPrompt.id);
+    } else if (editMode === 'edit' && selectedPromptId) {
+      // Update existing prompt
+      const newPrompts = systemPrompts.map(p => 
+        p.id === selectedPromptId 
+          ? { ...p, name: promptName.trim(), content: promptContent.trim() } 
+          : p
+      );
+      
+      setSystemPrompts(newPrompts);
+    }
+    
+    setEditMode(null);
+  };
+  
+  const handleActivatePrompt = () => {
+    setActivePromptId(selectedPromptId);
+    onClose();
+  };
+  
+  const handleClearActivePrompt = () => {
+    setActivePromptId(null);
+    onClose();
+  };
   
   if (!isOpen) return null;
   
@@ -62,45 +162,357 @@ function SystemPromptModal({
         borderRadius: 18,
         boxShadow: '0 4px 32px #000a',
         padding: '24px',
-        width: '60%',
-        maxWidth: '800px',
+        width: '70%',
+        maxWidth: '900px',
+        maxHeight: '80vh',
         border: '1.5px solid #444',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         <h2 style={{ 
           color: '#b8e0ff', 
           marginTop: 0, 
           fontSize: '1.5em' 
-        }}>System Prompt</h2>
-        <p style={{ 
-          color: '#7ecfff', 
-          fontSize: '0.9em', 
-          marginBottom: '16px' 
-        }}>
-          This prompt will be added to every conversation as context for the AI.
-        </p>
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Enter a system prompt to provide context for all conversations..."
-          style={{
-            width: '100%',
-            minHeight: '150px',
-            padding: '12px',
-            background: 'rgba(0,0,0,0.2)',
-            color: '#fff',
-            border: '1px solid #2d8cff',
-            borderRadius: 8,
-            fontFamily: 'inherit',
-            fontSize: '1em',
-            resize: 'vertical',
-            marginBottom: '16px',
-          }}
-        />
+        }}>System Prompts</h2>
+        
+        {editMode ? (
+          /* Edit or Create Prompt Form */
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ 
+              color: '#7ecfff', 
+              fontSize: '0.9em', 
+              marginBottom: '16px' 
+            }}>
+              {editMode === 'create' ? 'Create a new system prompt' : 'Edit system prompt'}
+            </p>
+            
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ 
+                display: 'block', 
+                color: '#fff', 
+                marginBottom: '6px' 
+              }}>
+                Prompt Name
+              </label>
+              <input
+                type="text"
+                value={promptName}
+                onChange={(e) => setPromptName(e.target.value)}
+                placeholder="Enter a name for this prompt..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: 'rgba(0,0,0,0.2)',
+                  color: '#fff',
+                  border: '1px solid #2d8cff',
+                  borderRadius: 8,
+                  fontSize: '1em',
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                color: '#fff', 
+                marginBottom: '6px' 
+              }}>
+                Prompt Content
+              </label>
+              <textarea
+                value={promptContent}
+                onChange={(e) => setPromptContent(e.target.value)}
+                placeholder="Enter the system prompt content..."
+                style={{
+                  width: '100%',
+                  minHeight: '150px',
+                  padding: '12px',
+                  background: 'rgba(0,0,0,0.2)',
+                  color: '#fff',
+                  border: '1px solid #2d8cff',
+                  borderRadius: 8,
+                  fontFamily: 'inherit',
+                  fontSize: '1em',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+            }}>
+              <button
+                onClick={() => setEditMode(null)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #7ecfff',
+                  color: '#7ecfff',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePrompt}
+                style={{
+                  background: '#2d8cff',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Prompt List and Actions */
+          <div style={{ 
+            display: 'flex',
+            height: '100%',
+            maxHeight: 'calc(80vh - 120px)',
+            overflow: 'hidden',
+          }}>
+            {/* Left panel: Prompt list */}
+            <div style={{ 
+              width: '40%', 
+              marginRight: '20px',
+              overflow: 'auto',
+              borderRight: '1px solid #444',
+              paddingRight: '16px',
+            }}>
+              <p style={{ 
+                color: '#7ecfff', 
+                fontSize: '0.9em', 
+                marginBottom: '12px' 
+              }}>
+                Select a system prompt:
+              </p>
+              
+              {systemPrompts.length === 0 ? (
+                <div style={{ 
+                  color: '#777', 
+                  padding: '12px 0', 
+                  fontStyle: 'italic' 
+                }}>
+                  No prompts saved yet. Create your first prompt.
+                </div>
+              ) : (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '8px' 
+                }}>
+                  {systemPrompts.map(prompt => (
+                    <div 
+                      key={prompt.id}
+                      onClick={() => setSelectedPromptId(prompt.id)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        background: selectedPromptId === prompt.id 
+                          ? 'rgba(45,140,255,0.2)' 
+                          : 'rgba(255,255,255,0.05)',
+                        border: activePromptId === prompt.id 
+                          ? '1px solid #2d8cff' 
+                          : '1px solid transparent',
+                        position: 'relative',
+                      }}
+                    >
+                      <div style={{ 
+                        color: '#fff', 
+                        fontWeight: selectedPromptId === prompt.id ? 'bold' : 'normal',
+                        marginBottom: '4px',
+                      }}>
+                        {prompt.name}
+                        {activePromptId === prompt.id && (
+                          <span style={{ 
+                            fontSize: '0.8em', 
+                            color: '#2d8cff', 
+                            marginLeft: '8px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: 'rgba(45,140,255,0.1)',
+                          }}>
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ 
+                        color: '#aaa', 
+                        fontSize: '0.85em',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {prompt.content.substring(0, 60)}
+                        {prompt.content.length > 60 ? '...' : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <button
+                onClick={handleCreatePrompt}
+                style={{
+                  background: '#2d8cff',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginTop: '16px',
+                }}
+              >
+                Create New Prompt
+              </button>
+            </div>
+            
+            {/* Right panel: Preview and actions */}
+            <div style={{ 
+              width: '60%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              {selectedPromptId ? (
+                <>
+                  <div style={{ 
+                    flex: 1,
+                    overflowY: 'auto',
+                    marginBottom: '16px',
+                  }}>
+                    <h3 style={{ 
+                      color: '#7ecfff', 
+                      fontSize: '1.1em',
+                      marginTop: 0,
+                    }}>
+                      {systemPrompts.find(p => p.id === selectedPromptId)?.name}
+                    </h3>
+                    <div style={{
+                      background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid #333',
+                      borderRadius: 8,
+                      padding: '12px',
+                      color: '#ddd',
+                      whiteSpace: 'pre-wrap',
+                      fontSize: '0.95em',
+                      overflow: 'auto',
+                      maxHeight: '300px',
+                      fontFamily: 'monospace',
+                    }}>
+                      {systemPrompts.find(p => p.id === selectedPromptId)?.content}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    gap: '10px',
+                    justifyContent: 'flex-end',
+                    marginTop: 'auto',
+                  }}>
+                    <button
+                      onClick={handleEditPrompt}
+                      style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid #555',
+                        color: '#fff',
+                        borderRadius: 6,
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={handleDeletePrompt}
+                      style={{
+                        background: 'rgba(255,0,0,0.2)',
+                        border: '1px solid #a55',
+                        color: '#faa',
+                        borderRadius: 6,
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Delete
+                    </button>
+                    {activePromptId === selectedPromptId ? (
+                      <button
+                        onClick={handleClearActivePrompt}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid #7ecfff',
+                          color: '#7ecfff',
+                          borderRadius: 6,
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleActivatePrompt}
+                        style={{
+                          background: '#2d8cff',
+                          border: 'none',
+                          color: '#fff',
+                          borderRadius: 6,
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Activate
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ 
+                  color: '#777', 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  padding: '20px',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '3em', marginBottom: '16px' }}>🤖</div>
+                  <p>Select a prompt from the list or create a new one</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Bottom action bar */}
         <div style={{
+          borderTop: '1px solid #444',
+          marginTop: '20px',
+          paddingTop: '16px',
           display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '12px',
+          justifyContent: 'space-between',
         }}>
+          <div style={{ 
+            color: '#7ecfff', 
+            fontSize: '0.9em' 
+          }}>
+            {activePromptId ? (
+              <span>Active prompt: {systemPrompts.find(p => p.id === activePromptId)?.name}</span>
+            ) : (
+              <span>No active prompt</span>
+            )}
+          </div>
           <button
             onClick={onClose}
             style={{
@@ -112,23 +524,7 @@ function SystemPromptModal({
               cursor: 'pointer',
             }}
           >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              setSystemPrompt(inputValue);
-              onClose();
-            }}
-            style={{
-              background: '#2d8cff',
-              border: 'none',
-              color: '#fff',
-              borderRadius: 6,
-              padding: '8px 16px',
-              cursor: 'pointer',
-            }}
-          >
-            Save
+            Close
           </button>
         </div>
       </div>
@@ -154,8 +550,10 @@ function ChatOverlay() {
   // Edit input value
   const [editInput, setEditInput] = useState('');
   
-  // System prompt state (persisted in localStorage)
-  const [systemPrompt, setSystemPrompt] = useLocalStorage<string>('systemPrompt', '');
+  // System prompts state (persisted in localStorage)
+  const [systemPrompts, setSystemPrompts] = useLocalStorage<SystemPrompt[]>('systemPrompts', []);
+  // Active system prompt ID (persisted in localStorage)
+  const [activePromptId, setActivePromptId] = useLocalStorage<string | null>('activePromptId', null);
   // System prompt modal state
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
 
@@ -219,9 +617,12 @@ function ChatOverlay() {
         // Build full context from all messages (no token limit)
         let promptContext = '';
         
-        // Add system prompt if available
-        if (systemPrompt) {
-          promptContext += `System: ${systemPrompt}\n`;
+        // Add active system prompt if available
+        if (activePromptId) {
+          const activePrompt = systemPrompts.find(p => p.id === activePromptId);
+          if (activePrompt) {
+            promptContext += `System: ${activePrompt.content}\n`;
+          }
         }
         
         for (const msg of conversationHistory.current) {
@@ -368,9 +769,12 @@ function ChatOverlay() {
       // Build full context from conversation history, without token limits for better accuracy
       let promptContext = '';
       
-      // Add system prompt if available
-      if (systemPrompt) {
-        promptContext += `System: ${systemPrompt}\n`;
+      // Add active system prompt if available
+      if (activePromptId) {
+        const activePrompt = systemPrompts.find(p => p.id === activePromptId);
+        if (activePrompt) {
+          promptContext += `System: ${activePrompt.content}\n`;
+        }
       }
       
       for (const msg of conversationHistory.current) {
@@ -687,8 +1091,10 @@ function ChatOverlay() {
       <SystemPromptModal 
         isOpen={showSystemPromptModal}
         onClose={() => setShowSystemPromptModal(false)}
-        systemPrompt={systemPrompt}
-        setSystemPrompt={setSystemPrompt}
+        systemPrompts={systemPrompts}
+        activePromptId={activePromptId}
+        setSystemPrompts={setSystemPrompts}
+        setActivePromptId={setActivePromptId}
       />
     </div>
   );
