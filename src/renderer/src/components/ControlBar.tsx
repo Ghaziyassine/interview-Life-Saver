@@ -271,10 +271,28 @@ export function ControlBar({
             boxShadow: '0 4px 16px #0008',
             padding: '0.5em 1.5em',
             zIndex: 2001,
-            minWidth: 120,
+            minWidth: 300,
           }}
         >
-          
+          <button
+            onClick={() => {
+              // Open system prompt modal
+              window.dispatchEvent(new CustomEvent('open-system-prompt-modal'));
+            }}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            🤖 System Prompt
+          </button>
           <button
             onClick={() => {
               // Reset context: refresh conversation

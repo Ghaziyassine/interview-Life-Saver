@@ -2,7 +2,139 @@ import { useRef, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import ReactMarkdown from 'react-markdown';
 
+// Create a custom hook to handle localStorage for system prompt
+function useLocalStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(error);
+      return initialValue;
+    }
+  });
 
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return [storedValue, setValue] as const;
+}
+
+
+
+function SystemPromptModal({ 
+  isOpen, 
+  onClose, 
+  systemPrompt, 
+  setSystemPrompt 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  systemPrompt: string; 
+  setSystemPrompt: (prompt: string) => void 
+}) {
+  const [inputValue, setInputValue] = useState(systemPrompt);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 3000,
+    }}>
+      <div style={{
+        background: 'rgba(30,30,40,0.96)',
+        borderRadius: 18,
+        boxShadow: '0 4px 32px #000a',
+        padding: '24px',
+        width: '60%',
+        maxWidth: '800px',
+        border: '1.5px solid #444',
+      }}>
+        <h2 style={{ 
+          color: '#b8e0ff', 
+          marginTop: 0, 
+          fontSize: '1.5em' 
+        }}>System Prompt</h2>
+        <p style={{ 
+          color: '#7ecfff', 
+          fontSize: '0.9em', 
+          marginBottom: '16px' 
+        }}>
+          This prompt will be added to every conversation as context for the AI.
+        </p>
+        <textarea
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Enter a system prompt to provide context for all conversations..."
+          style={{
+            width: '100%',
+            minHeight: '150px',
+            padding: '12px',
+            background: 'rgba(0,0,0,0.2)',
+            color: '#fff',
+            border: '1px solid #2d8cff',
+            borderRadius: 8,
+            fontFamily: 'inherit',
+            fontSize: '1em',
+            resize: 'vertical',
+            marginBottom: '16px',
+          }}
+        />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px',
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: '1px solid #7ecfff',
+              color: '#7ecfff',
+              borderRadius: 6,
+              padding: '8px 16px',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              setSystemPrompt(inputValue);
+              onClose();
+            }}
+            style={{
+              background: '#2d8cff',
+              border: 'none',
+              color: '#fff',
+              borderRadius: 6,
+              padding: '8px 16px',
+              cursor: 'pointer',
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ChatOverlay() {
   const [messages, setMessages] = useState<Array<{ text: string; from: string; id?: string }>>([
@@ -21,10 +153,28 @@ function ChatOverlay() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   // Edit input value
   const [editInput, setEditInput] = useState('');
+  
+  // System prompt state (persisted in localStorage)
+  const [systemPrompt, setSystemPrompt] = useLocalStorage<string>('systemPrompt', '');
+  // System prompt modal state
+  const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Add event listener for opening the system prompt modal
+  useEffect(() => {
+    const handleOpenSystemPromptModal = () => {
+      setShowSystemPromptModal(true);
+    };
+    
+    window.addEventListener('open-system-prompt-modal', handleOpenSystemPromptModal);
+    
+    return () => {
+      window.removeEventListener('open-system-prompt-modal', handleOpenSystemPromptModal);
+    };
+  }, []);
 
   // Generate unique ID for messages
   const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -68,6 +218,12 @@ function ChatOverlay() {
       try {
         // Build full context from all messages (no token limit)
         let promptContext = '';
+        
+        // Add system prompt if available
+        if (systemPrompt) {
+          promptContext += `System: ${systemPrompt}\n`;
+        }
+        
         for (const msg of conversationHistory.current) {
           promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
         }
@@ -211,6 +367,12 @@ function ChatOverlay() {
     } else {
       // Build full context from conversation history, without token limits for better accuracy
       let promptContext = '';
+      
+      // Add system prompt if available
+      if (systemPrompt) {
+        promptContext += `System: ${systemPrompt}\n`;
+      }
+      
       for (const msg of conversationHistory.current) {
         promptContext += `${msg.from === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
       }
@@ -521,6 +683,13 @@ function ChatOverlay() {
           </>
         )}
       </form>
+      {/* System Prompt Modal */}
+      <SystemPromptModal 
+        isOpen={showSystemPromptModal}
+        onClose={() => setShowSystemPromptModal(false)}
+        systemPrompt={systemPrompt}
+        setSystemPrompt={setSystemPrompt}
+      />
     </div>
   );
 }
