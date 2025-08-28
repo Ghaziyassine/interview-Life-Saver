@@ -35,6 +35,8 @@ declare global {
       }
       chatbot: {
         askMcp: (prompt: any) => Promise<any>
+        setModel: (model: string) => Promise<{ success: boolean, model: string, error?: string }>
+        getModel: () => Promise<{ model: string }>
       }
     }
   }

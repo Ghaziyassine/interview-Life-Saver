@@ -425,6 +425,33 @@ ipcMain.handle('overlay:take-screenshot', async () => {
     return { success: false, error: 'Could not capture screenshot.' };
   }
 });
+// Store the current Gemini model (defaulting to gemini-2.5-flash)
+let GEMINI_MODEL = 'gemini-2.5-flash';
+
+// IPC handler to set the Gemini model
+ipcMain.handle('chatbot:set-model', (_event, model: string) => {
+  // Validate model is one of the allowed free tier models
+  const allowedModels = [
+    
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite'
+  ];
+  
+  if (allowedModels.includes(model)) {
+    GEMINI_MODEL = model;
+    return { success: true, model: GEMINI_MODEL };
+  } else {
+    return { success: false, error: 'Invalid model specified', model: GEMINI_MODEL };
+  }
+});
+
+// IPC handler to get the current Gemini model
+ipcMain.handle('chatbot:get-model', () => {
+  return { model: GEMINI_MODEL };
+});
+
 ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
   const GEMINI_API_KEY = CONFIG.GEMINI_API_KEY;
   if (!GEMINI_API_KEY) {
@@ -443,7 +470,7 @@ ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
     } else {
       return { success: false, error: 'Invalid request format.' };
     }
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

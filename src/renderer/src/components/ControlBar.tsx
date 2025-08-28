@@ -1,6 +1,12 @@
 import { icons } from '@renderer/assets/icons';
 import { useEffect, useState } from 'react';
 
+// Import the GeminiModel interface
+export interface GeminiModel {
+  id: string;
+  name: string;
+}
+
 interface ControlBarProps {
   opacity: number;
   setOpacity: (v: number) => void;
@@ -36,6 +42,33 @@ export function ControlBar({
   // State for screen capture protection
   const [isHiddenFromCapture, setIsHiddenFromCapture] = useState(true);
   const [captureProtectionSupported, setCaptureProtectionSupported] = useState(false);
+  // State for Gemini model selection
+  const [currentModel, setCurrentModel] = useState('gemini-2.5-flash');
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  
+  // Models available in the free tier
+  const geminiModels = [
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite' }
+  ];
+  
+  // Fetch the current model on component mount
+  useEffect(() => {
+    const fetchCurrentModel = async () => {
+      try {
+        // Use type assertion to work around TypeScript limitation
+        const chatbotApi = window.api.chatbot as any;
+        const response = await chatbotApi.getModel();
+        setCurrentModel(response.model);
+      } catch (err) {
+        console.error('Failed to get current model:', err);
+      }
+    };
+    
+    fetchCurrentModel();
+  }, []);
   // Check if screen capture protection is supported on this platform
   useEffect(() => {
     const checkCaptureState = async () => {
@@ -293,6 +326,69 @@ export function ControlBar({
           >
             🤖 System Prompt
           </button>
+          <button
+            onClick={() => setShowModelSelector(!showModelSelector)}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <span>🤖 Gemini Model: {geminiModels.find(model => model.id === currentModel)?.name || currentModel}</span>
+            <span>{showModelSelector ? '▲' : '▼'}</span>
+          </button>
+          
+          {showModelSelector && (
+            <div style={{ 
+              padding: '0 0 0.5em 1em', 
+              marginBottom: '0.5em', 
+              borderLeft: '2px solid #444',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}>
+              {geminiModels.map(model => (
+                <button
+                  key={model.id}
+                  onClick={async () => {
+                    try {
+                      // Use type assertion to work around TypeScript limitation
+                      const chatbotApi = window.api.chatbot as any;
+                      const result = await chatbotApi.setModel(model.id);
+                      if (result.success) {
+                        setCurrentModel(result.model);
+                        setShowModelSelector(false);
+                      }
+                    } catch (err) {
+                      console.error('Failed to set model:', err);
+                    }
+                  }}
+                  style={{
+                    background: currentModel === model.id ? 'rgba(45, 140, 255, 0.2)' : 'none',
+                    color: currentModel === model.id ? '#2d8cff' : '#ccc',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '0.3em 0.5em',
+                    fontSize: 14,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {model.name}
+                </button>
+              ))}
+            </div>
+          )}
+          
           <button
             onClick={() => {
               // Reset context: refresh conversation
