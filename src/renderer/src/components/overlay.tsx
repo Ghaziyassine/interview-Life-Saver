@@ -865,8 +865,16 @@ function ChatOverlay() {
               const response = JSON.parse(result.response);
               console.log('Parsed webhook response:', response);
               
-              // Extract text from the response structure
-              const botText = response?.content?.parts?.[0]?.text;
+              // Handle both array and object response formats
+              let botText = null;
+              
+              if (Array.isArray(response) && response.length > 0) {
+                // Response is an array: [{ content: { parts: [{ text: "..." }] } }]
+                botText = response[0]?.content?.parts?.[0]?.text;
+              } else if (response?.content?.parts) {
+                // Response is an object: { content: { parts: [{ text: "..." }] } }
+                botText = response.content.parts[0]?.text;
+              }
               
               if (botText) {
                 // Add bot response to chat
