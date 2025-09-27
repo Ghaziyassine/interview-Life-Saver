@@ -556,6 +556,13 @@ function ChatOverlay() {
   const [activePromptId, setActivePromptId] = useLocalStorage<string | null>('activePromptId', null);
   // System prompt modal state
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
+  
+  // Audio recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -724,6 +731,221 @@ function ChatOverlay() {
     window.addEventListener('paste', handlePaste);
     return () => {
       window.removeEventListener('paste', handlePaste);
+    };
+  }, []);
+
+  // Audio recording functions
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Try to use audio/ogg format
+      let options = {};
+      if (MediaRecorder.isTypeSupported('audio/ogg')) {
+        options = { mimeType: 'audio/ogg' };
+      }
+      
+      const recorder = new MediaRecorder(stream, options);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        // Always use audio/ogg MIME type as requested
+        const blob = new Blob(chunks, { type: 'audio/ogg' });
+        setAudioBlob(blob);
+        stream.getTracks().forEach(track => track.stop());
+        console.log('Audio recorded:', blob.type, blob.size, 'bytes');
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    setIsRecording(false);
+    setAudioBlob(null);
+    setRecordingTime(0);
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  };
+
+  const sendAudio = async () => {
+    if (!audioBlob) return;
+
+    // Add audio message to chat immediately
+    const messageId = generateMessageId();
+    const audioMessage = { text: `[Audio message sent - ${formatTime(recordingTime)}]`, from: 'user', id: messageId };
+    conversationHistory.current.push(audioMessage);
+    setMessages(prev => [...prev, audioMessage]);
+    
+    // Store the current audioBlob before resetting state
+    const currentAudioBlob = audioBlob;
+    
+    // Reset audio state immediately
+    setAudioBlob(null);
+    setRecordingTime(0);
+
+    // Add "thinking" message while waiting for response
+    const thinkingMessageId = generateMessageId();
+    const thinkingMessage = { text: '🎧 Processing audio...', from: 'bot', id: thinkingMessageId };
+    conversationHistory.current.push(thinkingMessage);
+    setMessages(prev => [...prev, thinkingMessage]);
+
+    // Send audio to webhook using IPC to main process (async)
+    try {
+      console.log('Converting audio blob to ArrayBuffer...');
+      
+      // Convert blob to ArrayBuffer
+      const arrayBuffer = await currentAudioBlob.arrayBuffer();
+      
+      console.log('Sending audio via IPC:', {
+        size: arrayBuffer.byteLength,
+        type: currentAudioBlob.type
+      });
+
+      // Use IPC to send from main process
+      if (window.electron?.ipcRenderer?.invoke) {
+        const result = await window.electron.ipcRenderer.invoke(
+          'webhook:send-audio',
+          arrayBuffer
+        );
+        
+        console.log('IPC webhook result:', result);
+        
+        // Remove the "thinking" message first
+        conversationHistory.current = conversationHistory.current.filter(msg => msg.id !== thinkingMessageId);
+        setMessages(prev => prev.filter(msg => msg.id !== thinkingMessageId));
+        
+        if (result.success) {
+          console.log('Audio successfully sent to webhook');
+          console.log('Raw webhook response:', result.response);
+          
+          // Parse webhook response and display chatbot message
+          try {
+            if (result.response) {
+              const response = JSON.parse(result.response);
+              console.log('Parsed webhook response:', response);
+              
+              // Extract text from the response structure
+              const botText = response?.content?.parts?.[0]?.text;
+              
+              if (botText) {
+                // Add bot response to chat
+                const botMessageId = generateMessageId();
+                const botMessage = { text: botText, from: 'bot', id: botMessageId };
+                conversationHistory.current.push(botMessage);
+                setMessages(prev => [...prev, botMessage]);
+                
+                console.log('Bot response added to chat:', botText);
+              } else {
+                console.warn('No text found in webhook response');
+                // Show structure for debugging
+                const debugMessageId = generateMessageId();
+                const debugMessage = { text: `No text in response. Structure: ${JSON.stringify(response, null, 2)}`, from: 'bot', id: debugMessageId };
+                conversationHistory.current.push(debugMessage);
+                setMessages(prev => [...prev, debugMessage]);
+              }
+            } else {
+              console.warn('Empty response from webhook');
+              const emptyMessageId = generateMessageId();
+              const emptyMessage = { text: 'Received empty response from webhook', from: 'bot', id: emptyMessageId };
+              conversationHistory.current.push(emptyMessage);
+              setMessages(prev => [...prev, emptyMessage]);
+            }
+          } catch (parseError) {
+            console.error('Error parsing webhook response:', parseError);
+            console.log('Raw response that failed to parse:', result.response);
+            
+            // If parsing fails but we have a response, show it as-is
+            if (result.response) {
+              const rawMessageId = generateMessageId();
+              const rawMessage = { text: `Raw webhook response: ${result.response}`, from: 'bot', id: rawMessageId };
+              conversationHistory.current.push(rawMessage);
+              setMessages(prev => [...prev, rawMessage]);
+            }
+          }
+        } else {
+          console.error('Failed to send audio:', result.error || result.statusText);
+          
+          // Show error message in chat
+          const errorMessageId = generateMessageId();
+          const errorMessage = { text: `Error sending audio: ${result.error || result.statusText}`, from: 'bot', id: errorMessageId };
+          conversationHistory.current.push(errorMessage);
+          setMessages(prev => [...prev, errorMessage]);
+        }
+      } else {
+        console.error('IPC not available');
+        
+        // Remove thinking message and show error
+        conversationHistory.current = conversationHistory.current.filter(msg => msg.id !== thinkingMessageId);
+        setMessages(prev => prev.filter(msg => msg.id !== thinkingMessageId));
+        
+        const ipcErrorId = generateMessageId();
+        const ipcError = { text: 'IPC not available for audio processing', from: 'bot', id: ipcErrorId };
+        conversationHistory.current.push(ipcError);
+        setMessages(prev => [...prev, ipcError]);
+      }
+      
+    } catch (error) {
+      console.error('Error sending audio via IPC:', error);
+      
+      // Remove thinking message and show error
+      conversationHistory.current = conversationHistory.current.filter(msg => msg.id !== thinkingMessageId);
+      setMessages(prev => prev.filter(msg => msg.id !== thinkingMessageId));
+      
+      // Show error message in chat
+      const catchErrorId = generateMessageId();
+      const catchError = { text: `Error: ${error instanceof Error ? error.message : String(error)}`, from: 'bot', id: catchErrorId };
+      conversationHistory.current.push(catchError);
+      setMessages(prev => [...prev, catchError]);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
     };
   }, []);
 
@@ -1033,6 +1255,127 @@ function ChatOverlay() {
         >
           <span style={{ fontSize: 18 }}>📸</span>
         </button>
+        
+        {/* Audio Recording Button */}
+        {!isRecording && !audioBlob ? (
+          <button
+            type="button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              background: 'rgba(45,140,255,0.10)',
+              borderRadius: 8,
+              border: '1.5px solid #2d8cff33',
+              padding: '6px 10px',
+              cursor: 'pointer',
+              color: '#7ecfff',
+              fontWeight: 600,
+              fontSize: '1em',
+              transition: 'background 0.2s',
+            }}
+            title="Record voice message"
+            onClick={startRecording}
+          >
+            <span style={{ fontSize: 18 }}>🎤</span>
+          </button>
+        ) : isRecording ? (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8,
+            background: 'rgba(255,0,0,0.10)',
+            borderRadius: 8,
+            border: '1.5px solid #ff333333',
+            padding: '6px 10px',
+            color: '#ff7e7e',
+          }}>
+            <span style={{ fontSize: 18, animation: 'pulse 1s infinite' }}>🎤</span>
+            <span style={{ fontSize: '0.9em', minWidth: '40px' }}>{formatTime(recordingTime)}</span>
+            <button
+              type="button"
+              onClick={stopRecording}
+              style={{
+                background: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: '0.8em',
+                cursor: 'pointer',
+                marginLeft: 4,
+              }}
+              title="Stop recording"
+            >
+              ⏹
+            </button>
+            <button
+              type="button"
+              onClick={cancelRecording}
+              style={{
+                background: '#dc3545',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: '0.8em',
+                cursor: 'pointer',
+                marginLeft: 4,
+              }}
+              title="Cancel recording"
+            >
+              ✕
+            </button>
+          </div>
+        ) : audioBlob ? (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8,
+            background: 'rgba(40,167,69,0.10)',
+            borderRadius: 8,
+            border: '1.5px solid #28a74533',
+            padding: '6px 10px',
+            color: '#7ecf7e',
+          }}>
+            <span style={{ fontSize: 18 }}>🎵</span>
+            <span style={{ fontSize: '0.9em' }}>{formatTime(recordingTime)}</span>
+            <button
+              type="button"
+              onClick={sendAudio}
+              style={{
+                background: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: '0.8em',
+                cursor: 'pointer',
+                marginLeft: 4,
+              }}
+              title="Send audio"
+            >
+              📤
+            </button>
+            <button
+              type="button"
+              onClick={cancelRecording}
+              style={{
+                background: '#dc3545',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: '0.8em',
+                cursor: 'pointer',
+                marginLeft: 4,
+              }}
+              title="Cancel audio"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
         <input
           type="text"
           value={input}
@@ -1167,6 +1510,18 @@ const style = document.createElement('style');
 style.textContent = `
   div:hover .edit-button {
     opacity: 1;
+  }
+  
+  @keyframes pulse {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+    }
   }
 `;
 document.head.appendChild(style);

@@ -6,5 +6,6 @@ dotenv.config()
 
 // These values will be embedded in the build
 export const CONFIG = {
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || ''
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  WEBHOOK_URL: process.env.webhookUrl || ''
 }

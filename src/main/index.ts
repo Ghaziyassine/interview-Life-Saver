@@ -495,6 +495,59 @@ ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
   }
 });
 
+// IPC handler to get webhook URL from config
+ipcMain.handle('config:get-webhook-url', () => {
+  return CONFIG.WEBHOOK_URL;
+});
+
+// IPC handler to send audio data to webhook
+ipcMain.handle('webhook:send-audio', async (_event, audioData: ArrayBuffer, url?: string) => {
+  try {
+    // Use provided URL or fallback to config
+    const webhookUrl = url || CONFIG.WEBHOOK_URL;
+    
+    if (!webhookUrl) {
+      throw new Error('Webhook URL not configured');
+    }
+
+    console.log('Sending audio data to webhook:', {
+      size: audioData.byteLength,
+      url: webhookUrl
+    });
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'audio/ogg',
+        'Content-Length': audioData.byteLength.toString(),
+      },
+      body: Buffer.from(audioData),
+    });
+
+    const responseText = await response.text();
+    
+    console.log('Webhook response:', {
+      status: response.status,
+      statusText: response.statusText,
+      response: responseText
+    });
+
+    return {
+      success: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      response: responseText
+    };
+
+  } catch (error) {
+    console.error('Error sending audio to webhook:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+});
+
 // Handle close app from renderer
 ipcMain.on('main:close-app', () => {
   const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
