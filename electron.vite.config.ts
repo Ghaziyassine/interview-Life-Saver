@@ -10,7 +10,8 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
+      'process.env.WEBHOOK_URL': JSON.stringify(process.env.WEBHOOK_URL)
     }
   },
   preload: {
@@ -24,7 +25,8 @@ export default defineConfig({
     },
     plugins: [react()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
+      'process.env.WEBHOOK_URL': JSON.stringify(process.env.WEBHOOK_URL)
     }
   }
 })
