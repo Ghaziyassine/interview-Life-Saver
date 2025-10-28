@@ -1,8 +1,3 @@
-// Handle minimize app from renderer
-ipcMain.on('main:minimize', () => {
-  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
-  if (win) win.minimize()
-})
 import 'dotenv/config';
 import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu } from 'electron'
 import { join } from 'path'
@@ -239,13 +234,27 @@ function createWindow(): void {
           if (mainWindowRef) {
             mainWindowRef.show();
             mainWindowRef.focus();
+            // Re-enable screen capture protection when shown via tray menu
+            if (process.platform === 'win32' && windowUtils) {
+              setTimeout(() => {
+                if (mainWindowRef) {
+                  hideWindowFromCapture(mainWindowRef);
+                }
+              }, 100);
+            }
           }
         }
       },
       {
         label: 'Hide App',
         click: () => {
-          if (mainWindowRef) mainWindowRef.hide();
+          if (mainWindowRef) {
+            mainWindowRef.hide();
+            // Disable screen capture protection when hidden via tray menu
+            if (process.platform === 'win32' && windowUtils) {
+              showWindowInCapture(mainWindowRef);
+            }
+          }
         }
       },
       {
@@ -261,9 +270,21 @@ function createWindow(): void {
       if (mainWindowRef) {
         if (mainWindowRef.isVisible()) {
           mainWindowRef.hide();
+          // Disable screen capture protection when hidden via tray
+          if (process.platform === 'win32' && windowUtils) {
+            showWindowInCapture(mainWindowRef);
+          }
         } else {
           mainWindowRef.show();
           mainWindowRef.focus();
+          // Re-enable screen capture protection when shown via tray
+          if (process.platform === 'win32' && windowUtils && mainWindowRef) {
+            setTimeout(() => {
+              if (mainWindowRef) {
+                hideWindowFromCapture(mainWindowRef);
+              }
+            }, 100);
+          }
         }
       }
     });
@@ -278,6 +299,27 @@ function createWindow(): void {
   mainWindow.on('minimize' as any, (event: Electron.Event) => {
     event.preventDefault();
     mainWindow.hide();
+    
+    // Disable screen capture protection when minimized (Windows only)
+    if (process.platform === 'win32' && windowUtils) {
+      showWindowInCapture(mainWindow);
+    }
+  });
+
+  // Re-enable screen capture protection when window is shown/focused
+  mainWindow.on('show', () => {
+    if (process.platform === 'win32' && windowUtils) {
+      // Small delay to ensure the window is fully shown
+      setTimeout(() => {
+        hideWindowFromCapture(mainWindow);
+      }, 100);
+    }
+  });
+
+  mainWindow.on('focus', () => {
+    if (process.platform === 'win32' && windowUtils) {
+      hideWindowFromCapture(mainWindow);
+    }
   });
   // Track if app is quitting to allow real close
   let isQuitting = false;
@@ -574,6 +616,18 @@ ipcMain.handle('main:get-capture-state', () => {
     };
   }
 });
+
+// Handle minimize app from renderer
+ipcMain.on('main:minimize', () => {
+  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+  if (win) {
+    win.minimize()
+    // Disable screen capture protection when minimized via renderer
+    if (process.platform === 'win32' && windowUtils) {
+      showWindowInCapture(win);
+    }
+  }
+})
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
