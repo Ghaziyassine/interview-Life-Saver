@@ -31,6 +31,8 @@ const chatbotAPI = {
   askMcp: (prompt) => ipcRenderer.invoke('chatbot:ask-mcp', prompt),
   setModel: (model) => ipcRenderer.invoke('chatbot:set-model', model),
   getModel: () => ipcRenderer.invoke('chatbot:get-model'),
+  setApiKey: (apiKey) => ipcRenderer.invoke('chatbot:set-api-key', apiKey),
+  getApiKey: () => ipcRenderer.invoke('chatbot:get-api-key'),
 }
 
 // Custom APIs for renderer

@@ -42,6 +42,11 @@ export function ControlBar({
   // State for screen capture protection
   const [isHiddenFromCapture, setIsHiddenFromCapture] = useState(true);
   const [captureProtectionSupported, setCaptureProtectionSupported] = useState(false);
+  // State for API key configuration
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyStatus, setApiKeyStatus] = useState<{ hasKey: boolean; maskedKey: string }>({ hasKey: false, maskedKey: '' });
+  const [apiKeySaveMsg, setApiKeySaveMsg] = useState('');
   // State for Gemini model selection
   const [currentModel, setCurrentModel] = useState('gemini-2.5-flash');
   const [showModelSelector, setShowModelSelector] = useState(false);
@@ -69,6 +74,35 @@ export function ControlBar({
     
     fetchCurrentModel();
   }, []);
+  // Fetch API key status on mount
+  useEffect(() => {
+    const fetchApiKeyStatus = async () => {
+      try {
+        const chatbotApi = window.api.chatbot as any;
+        const status = await chatbotApi.getApiKey();
+        setApiKeyStatus(status);
+      } catch (err) {
+        console.error('Failed to get API key status:', err);
+      }
+    };
+    fetchApiKeyStatus();
+  }, []);
+
+  const handleSaveApiKey = async () => {
+    try {
+      const chatbotApi = window.api.chatbot as any;
+      await chatbotApi.setApiKey(apiKeyInput);
+      const status = await chatbotApi.getApiKey();
+      setApiKeyStatus(status);
+      setApiKeyInput('');
+      setApiKeySaveMsg('✅ API key saved!');
+      setTimeout(() => setApiKeySaveMsg(''), 2000);
+    } catch (err) {
+      console.error('Failed to save API key:', err);
+      setApiKeySaveMsg('❌ Failed to save');
+      setTimeout(() => setApiKeySaveMsg(''), 2000);
+    }
+  };
   // Check if screen capture protection is supported on this platform
   useEffect(() => {
     const checkCaptureState = async () => {
@@ -326,6 +360,99 @@ export function ControlBar({
           >
             🤖 System Prompt
           </button>
+
+          {/* API Key Configuration */}
+          <button
+            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>🔑 API Key {apiKeyStatus.hasKey ? '(configured)' : '(not set)'}</span>
+            <span>{showApiKeyInput ? '▲' : '▼'}</span>
+          </button>
+
+          {showApiKeyInput && (
+            <div style={{
+              padding: '0.5em 0 0.5em 1em',
+              marginBottom: '0.5em',
+              borderLeft: '2px solid #444',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              {apiKeyStatus.hasKey && (
+                <div style={{ fontSize: 12, color: '#aaa', fontFamily: 'monospace' }}>
+                  Current: {apiKeyStatus.maskedKey}
+                </div>
+              )}
+              <input
+                type="password"
+                placeholder="Enter your Gemini API key"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && apiKeyInput.trim()) handleSaveApiKey();
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  color: '#fff',
+                  border: '1px solid #555',
+                  borderRadius: 8,
+                  padding: '0.4em 0.6em',
+                  fontSize: 13,
+                  outline: 'none',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={handleSaveApiKey}
+                  disabled={!apiKeyInput.trim()}
+                  style={{
+                    background: apiKeyInput.trim() ? '#2d8cff' : '#555',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '0.3em 1em',
+                    fontSize: 13,
+                    cursor: apiKeyInput.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Save
+                </button>
+                {apiKeySaveMsg && (
+                  <span style={{ fontSize: 12, color: apiKeySaveMsg.startsWith('✅') ? '#4caf50' : '#f44336' }}>
+                    {apiKeySaveMsg}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: '#888' }}>
+                Get your key at{' '}
+                <span
+                  style={{ color: '#2d8cff', cursor: 'pointer', textDecoration: 'underline' }}
+                  onClick={() => {
+                    try { require('electron').shell.openExternal('https://aistudio.google.com/apikey'); } catch { /* ignore */ }
+                  }}
+                >
+                  aistudio.google.com/apikey
+                </span>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => setShowModelSelector(!showModelSelector)}
             style={{

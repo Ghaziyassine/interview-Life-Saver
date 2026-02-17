@@ -27,6 +27,13 @@ declare global {
         showInCapture: () => Promise<boolean>
         getCaptureState: () => Promise<{ supported: boolean; hidden?: boolean; affinity?: number; error?: string }>
       }
+      chatbot: {
+        askMcp: (prompt: any) => Promise<any>
+        setModel: (model: string) => Promise<any>
+        getModel: () => Promise<{ model: string }>
+        setApiKey: (apiKey: string) => Promise<{ success: boolean }>
+        getApiKey: () => Promise<{ hasKey: boolean; maskedKey: string }>
+      }
     }
   }
 }

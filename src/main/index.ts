@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu } from 'electron'
 import { join } from 'path'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 // Import the config file
@@ -494,10 +495,53 @@ ipcMain.handle('chatbot:get-model', () => {
   return { model: GEMINI_MODEL };
 });
 
+// --- User-configured API key (persisted to userData) ---
+const API_KEY_FILE = join(app.getPath('userData'), 'api-key.json');
+
+function loadApiKey(): string {
+  try {
+    if (existsSync(API_KEY_FILE)) {
+      const data = JSON.parse(readFileSync(API_KEY_FILE, 'utf-8'));
+      return data.apiKey || '';
+    }
+  } catch (err) {
+    console.error('Failed to load API key:', err);
+  }
+  return '';
+}
+
+function saveApiKey(key: string): void {
+  try {
+    writeFileSync(API_KEY_FILE, JSON.stringify({ apiKey: key }), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save API key:', err);
+  }
+}
+
+let USER_API_KEY = loadApiKey();
+
+// IPC handler to set the API key
+ipcMain.handle('chatbot:set-api-key', (_event, apiKey: string) => {
+  USER_API_KEY = apiKey.trim();
+  saveApiKey(USER_API_KEY);
+  return { success: true };
+});
+
+// IPC handler to get the API key (masked for security)
+ipcMain.handle('chatbot:get-api-key', () => {
+  const key = USER_API_KEY || CONFIG.GEMINI_API_KEY;
+  if (!key) return { hasKey: false, maskedKey: '' };
+  const masked = key.length > 8
+    ? key.slice(0, 4) + '\u2022'.repeat(key.length - 8) + key.slice(-4)
+    : '\u2022'.repeat(key.length);
+  return { hasKey: true, maskedKey: masked };
+});
+
 ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
-  const GEMINI_API_KEY = CONFIG.GEMINI_API_KEY;
+  // User-configured key takes priority over env/config key
+  const GEMINI_API_KEY = USER_API_KEY || CONFIG.GEMINI_API_KEY;
   if (!GEMINI_API_KEY) {
-    return { success: false, error: 'Gemini API key not set in environment variable GEMINI_API_KEY.' };
+    return { success: false, error: 'No API key configured. Please set your Gemini API key in Settings \u2192 \ud83d\udd11 API Key.' };
   }
   try {
     // If payload is a string, treat as text prompt (backward compatible)
