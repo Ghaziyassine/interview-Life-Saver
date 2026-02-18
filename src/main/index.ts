@@ -675,3 +675,122 @@ ipcMain.on('main:minimize', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+// ─── WebSocket Room Mode (connection managed in main process) ───
+import WebSocket from 'ws';
+
+let roomSocket: WebSocket | null = null;
+let roomReconnectAttempts = 0;
+const ROOM_MAX_RECONNECT = 5;
+let roomReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function sendToRenderer(channel: string, data: any) {
+  if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+    mainWindowRef.webContents.send(channel, data);
+  }
+}
+
+function handleRoomMessage(raw: string) {
+  try {
+    const message = JSON.parse(raw);
+    sendToRenderer('room:message', message);
+  } catch (err) {
+    console.error('Room WS parse error:', err);
+  }
+}
+
+function roomAttemptReconnect() {
+  if (roomReconnectAttempts >= ROOM_MAX_RECONNECT) {
+    sendToRenderer('room:message', { type: 'error', error: 'Max reconnect attempts reached' });
+    return;
+  }
+  roomReconnectAttempts++;
+  const delay = Math.min(1000 * Math.pow(2, roomReconnectAttempts), 16000);
+  roomReconnectTimer = setTimeout(() => {
+    roomConnect();
+  }, delay);
+}
+
+function roomConnect() {
+  if (roomSocket && roomSocket.readyState === WebSocket.OPEN) return;
+
+  const url = CONFIG.WS_URL;
+  sendToRenderer('room:status', 'connecting');
+
+  try {
+    roomSocket = new WebSocket(url);
+
+    roomSocket.on('open', () => {
+      roomReconnectAttempts = 0;
+      sendToRenderer('room:status', 'connected');
+    });
+
+    roomSocket.on('message', (data) => {
+      handleRoomMessage(data.toString());
+    });
+
+    roomSocket.on('close', () => {
+      sendToRenderer('room:status', 'disconnected');
+      roomAttemptReconnect();
+    });
+
+    roomSocket.on('error', (err) => {
+      console.error('Room WS error:', err.message);
+    });
+  } catch (err) {
+    console.error('Room WS connect failed:', err);
+    sendToRenderer('room:status', 'disconnected');
+    roomAttemptReconnect();
+  }
+}
+
+function roomDisconnect() {
+  if (roomReconnectTimer) {
+    clearTimeout(roomReconnectTimer);
+    roomReconnectTimer = null;
+  }
+  roomReconnectAttempts = ROOM_MAX_RECONNECT; // stop auto-reconnect
+  if (roomSocket) {
+    roomSocket.close();
+    roomSocket = null;
+  }
+  sendToRenderer('room:status', 'disconnected');
+}
+
+function roomSend(msg: any) {
+  if (roomSocket && roomSocket.readyState === WebSocket.OPEN) {
+    roomSocket.send(JSON.stringify(msg));
+    return true;
+  }
+  return false;
+}
+
+// Keep-alive ping
+setInterval(() => {
+  if (roomSocket && roomSocket.readyState === WebSocket.OPEN) {
+    roomSocket.send(JSON.stringify({ type: 'ping' }));
+  }
+}, 30000);
+
+// IPC handlers for room mode
+ipcMain.handle('room:connect', () => {
+  roomReconnectAttempts = 0;
+  roomConnect();
+  return { success: true };
+});
+
+ipcMain.handle('room:disconnect', () => {
+  roomDisconnect();
+  return { success: true };
+});
+
+ipcMain.handle('room:send', (_event, msg: any) => {
+  const ok = roomSend(msg);
+  return { success: ok };
+});
+
+ipcMain.handle('room:get-status', () => {
+  if (roomSocket && roomSocket.readyState === WebSocket.OPEN) return 'connected';
+  if (roomSocket && roomSocket.readyState === WebSocket.CONNECTING) return 'connecting';
+  return 'disconnected';
+});

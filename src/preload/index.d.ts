@@ -34,6 +34,15 @@ declare global {
         setApiKey: (apiKey: string) => Promise<{ success: boolean }>
         getApiKey: () => Promise<{ hasKey: boolean; maskedKey: string }>
       }
+      room: {
+        connect: () => Promise<{ success: boolean }>
+        disconnect: () => Promise<{ success: boolean }>
+        send: (msg: any) => Promise<{ success: boolean }>
+        getStatus: () => Promise<string>
+        onMessage: (cb: (data: any) => void) => void
+        onStatus: (cb: (status: string) => void) => void
+        removeAllListeners: () => void
+      }
     }
   }
 }

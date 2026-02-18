@@ -38,6 +38,15 @@ declare global {
         setModel: (model: string) => Promise<{ success: boolean, model: string, error?: string }>
         getModel: () => Promise<{ model: string }>
       }
+      room: {
+        connect: () => Promise<{ success: boolean }>
+        disconnect: () => Promise<{ success: boolean }>
+        send: (msg: any) => Promise<{ success: boolean }>
+        getStatus: () => Promise<string>
+        onMessage: (cb: (data: any) => void) => void
+        onStatus: (cb: (status: string) => void) => void
+        removeAllListeners: () => void
+      }
     }
   }
 }

@@ -28,7 +28,8 @@
     "fs-minipass": "^1.2.7",
     "node-fetch": "^2.7.0",
     "react-markdown": "^10.1.0",
-    "window-utils": "file:native-addon/window-utils"
+    "window-utils": "file:native-addon/window-utils",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
@@ -37,6 +38,7 @@
     "@types/node": "^22.14.1",
     "@types/react": "^19.1.1",
     "@types/react-dom": "^19.1.2",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^35.1.5",
     "electron-builder": "^25.1.8",

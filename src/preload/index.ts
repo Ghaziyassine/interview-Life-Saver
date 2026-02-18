@@ -35,11 +35,25 @@ const chatbotAPI = {
   getApiKey: () => ipcRenderer.invoke('chatbot:get-api-key'),
 }
 
+const roomAPI = {
+  connect: () => ipcRenderer.invoke('room:connect'),
+  disconnect: () => ipcRenderer.invoke('room:disconnect'),
+  send: (msg) => ipcRenderer.invoke('room:send', msg),
+  getStatus: () => ipcRenderer.invoke('room:get-status'),
+  onMessage: (cb) => ipcRenderer.on('room:message', (_e, data) => cb(data)),
+  onStatus: (cb) => ipcRenderer.on('room:status', (_e, status) => cb(status)),
+  removeAllListeners: () => {
+    ipcRenderer.removeAllListeners('room:message');
+    ipcRenderer.removeAllListeners('room:status');
+  },
+}
+
 // Custom APIs for renderer
 const api = {
   overlay: overlayAPI,
   main: mainAPI,
   chatbot: chatbotAPI,
+  room: roomAPI,
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
