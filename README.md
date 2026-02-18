@@ -119,7 +119,7 @@ cd interview-Life-Saver
 
 #### Create .env file
 ```bash
-GEMINI_API_KEY=your_api_key_here
+WS_URL=your_websocket_api_host
 ```
 #### Build Native Add-on (for Screen Capture Protection)
 
