@@ -14,6 +14,151 @@ interface RoomMessage {
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
+interface ZoomableImageProps {
+  src: string;
+  alt: string;
+  fileName?: string;
+}
+
+const ZoomableImage: React.FC<ZoomableImageProps> = ({ src, alt, fileName }) => {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [startDrag, setStartDrag] = useState<{ x: number; y: number } | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const clampPosition = useCallback((
+    currentX: number,
+    currentY: number,
+    currentScale: number,
+    imgEl: HTMLImageElement,
+    containerRect: DOMRect
+  ) => {
+    const naturalWidth = imgEl.naturalWidth;
+    const naturalHeight = imgEl.naturalHeight;
+
+    const scaledImageWidth = naturalWidth * currentScale;
+    const scaledImageHeight = naturalHeight * currentScale;
+
+    const halfContainerWidth = containerRect.width / 2;
+    const halfContainerHeight = containerRect.height / 2;
+
+    const halfScaledImageWidth = scaledImageWidth / 2;
+    const halfScaledImageHeight = scaledImageHeight / 2;
+
+    let maxX = Math.max(0, halfScaledImageWidth - halfContainerWidth);
+    let maxY = Math.max(0, halfScaledImageHeight - halfContainerHeight);
+
+    const clampedX = Math.max(-maxX, Math.min(currentX, maxX));
+    const clampedY = Math.max(-maxY, Math.min(currentY, maxY));
+    return { x: clampedX, y: clampedY };
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!imgRef.current || !containerRef.current) return;
+
+    const scaleAmount = 0.1;
+    const newScale = e.deltaY < 0 ? scale + scaleAmount : scale - scaleAmount;
+    const clampedNewScale = Math.max(0.5, Math.min(newScale, 5));
+
+    if (clampedNewScale === scale) return;
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const imgElement = imgRef.current;
+
+    // Mouse position relative to the container's top-left corner
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+
+    // Current image center relative to container's top-left
+    const currentImgCenterX = containerRect.width / 2 + position.x;
+    const currentImgCenterY = containerRect.height / 2 + position.y;
+
+    // Mouse position relative to the image's current center
+    const mouseRelToImgCenterX = mouseX - currentImgCenterX;
+    const mouseRelToImgCenterY = mouseY - currentImgCenterY;
+
+    // Calculate how much the image needs to shift to keep the mouse point stationary
+    let newPosX = position.x - mouseRelToImgCenterX * (clampedNewScale / scale - 1);
+    let newPosY = position.y - mouseRelToImgCenterY * (clampedNewScale / scale - 1);
+
+    // Apply clamping after calculating new position
+    const clampedPos = clampPosition(newPosX, newPosY, clampedNewScale, imgElement, containerRect);
+
+    setScale(clampedNewScale);
+    setPosition(clampedPos);
+  }, [scale, position, clampPosition]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    e.preventDefault();
+    setStartDrag({ x: e.clientX - position.x, y: e.clientY - position.y });
+  }, [position]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    if (!startDrag) return;
+    e.preventDefault();
+
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    const imgElement = imgRef.current;
+    if (!containerRect || !imgElement) return;
+
+    const newX = e.clientX - startDrag.x;
+    const newY = e.clientY - startDrag.y;
+
+    const clampedPos = clampPosition(newX, newY, scale, imgElement, containerRect);
+
+    setPosition(clampedPos);
+  }, [startDrag, scale, clampPosition]);
+
+  const handleMouseUp = useCallback(() => {
+    setStartDrag(null);
+  }, []);
+
+  // Reset zoom and position when image changes
+  useEffect(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, [src]);
+
+  return (
+    <div
+      ref={containerRef}
+      onWheel={handleWheel}
+      style={{
+        overflow: 'hidden',
+        cursor: startDrag ? 'grabbing' : (scale > 1 ? 'grab' : 'zoom-in'),
+        borderRadius: 8,
+        marginTop: 4,
+        position: 'relative',
+        maxWidth: '100%',
+        maxHeight: 300, // Keep initial max height for the container
+        display: 'inline-block', // To make container wrap content
+      }}
+    >
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp} // Stop dragging if mouse leaves the image area
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transformOrigin: 'center center',
+          transition: startDrag ? 'none' : 'transform 0.1s ease-out',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'contain',
+          pointerEvents: scale > 1 ? 'auto' : 'none',
+        }}
+      />
+      {fileName && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{fileName}</div>}
+    </div>
+  );
+};
+
 export function RoomChat() {
   const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [input, setInput] = useState('');
@@ -402,14 +547,11 @@ export function RoomChat() {
                 <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
               </div>
               {msg.type === 'image' && msg.imageData && msg.mimeType ? (
-                <div>
-                  <img
-                    src={`data:${msg.mimeType};base64,${msg.imageData}`}
-                    alt={msg.fileName || 'image'}
-                    style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, marginTop: 4 }}
-                  />
-                  {msg.fileName && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{msg.fileName}</div>}
-                </div>
+                <ZoomableImage
+                  src={`data:${msg.mimeType};base64,${msg.imageData}`}
+                  alt={msg.fileName || 'image'}
+                  fileName={msg.fileName}
+                />
               ) : (
                 <ReactMarkdown
                   children={msg.text || ''}
@@ -460,6 +602,36 @@ export function RoomChat() {
           <span style={{ fontSize: 18 }}>📎</span>
           <input type="file" accept="image/*" multiple onChange={handleImageChange} style={{ display: 'none' }} />
         </label>
+        <button
+          type="button"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(45,140,255,0.10)',
+            borderRadius: 8,
+            border: '1.5px solid #2d8cff33',
+            padding: '6px 10px',
+            cursor: 'pointer',
+            color: '#7ecfff',
+            fontWeight: 600,
+            fontSize: '1em',
+            transition: 'background 0.2s',
+          }}
+          title="Take screenshot and attach"
+          onClick={async () => {
+            if (window.electron?.ipcRenderer?.invoke) {
+              const res = await window.electron.ipcRenderer.invoke('overlay:take-screenshot');
+              if (res && res.success && res.base64) {
+                setImages(prev => [...prev, { base64: res.base64, mime: res.mime || 'image/png', name: 'screenshot.png' }]);
+              } else {
+                showNotification(res?.error || 'Screenshot failed', 'error');
+              }
+            }
+          }}
+        >
+          <span style={{ fontSize: 18 }}>📸</span>
+        </button>
         <input
           type="text" value={input} onChange={e => setInput(e.target.value)}
           placeholder="Type a message..." autoComplete="off"
