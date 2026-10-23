@@ -47,12 +47,13 @@ export function ControlBar({
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeyStatus, setApiKeyStatus] = useState<{ hasKey: boolean; maskedKey: string }>({ hasKey: false, maskedKey: '' });
   const [apiKeySaveMsg, setApiKeySaveMsg] = useState('');
-  // State for Gemini model selection
-  const [currentModel, setCurrentModel] = useState('gemini-2.5-flash');
+  // State for LLM model selection
+  const [currentModel, setCurrentModel] = useState('auto');
   const [showModelSelector, setShowModelSelector] = useState(false);
-  
-  // Models available in the free tier
-  const geminiModels = [
+
+  // Models available
+  const llmModels = [
+    { id: 'auto', name: 'Auto (Default)' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite' },
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
@@ -399,7 +400,7 @@ export function ControlBar({
               )}
               <input
                 type="password"
-                placeholder="Enter your Gemini API key"
+                placeholder="Enter your LLM API key"
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -470,7 +471,7 @@ export function ControlBar({
               alignItems: 'center'
             }}
           >
-            <span>🤖 Gemini Model: {geminiModels.find(model => model.id === currentModel)?.name || currentModel}</span>
+            <span>🤖 LLM Model: {llmModels.find(model => model.id === currentModel)?.name || currentModel}</span>
             <span>{showModelSelector ? '▲' : '▼'}</span>
           </button>
           
@@ -483,7 +484,7 @@ export function ControlBar({
               flexDirection: 'column',
               gap: '4px'
             }}>
-              {geminiModels.map(model => (
+              {llmModels.map(model => (
                 <button
                   key={model.id}
                   onClick={async () => {

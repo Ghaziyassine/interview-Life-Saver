@@ -3,10 +3,11 @@
 ## Project Overview
 Interview Life Saver is an Electron + React application designed to help users during online interviews. It provides:
 
-- **LLM Chat Mode** - Gemini API-powered conversational assistant with system prompts
+- **LLM Chat Mode** - Local LLM conversational assistant with OpenAI-compatible API (supports custom endpoints via `LLM_host` env var) with system prompts
 - **Room Mode** - WebSocket-based real-time chat rooms for group interviews
 - **Screen Capture Protection** - Windows-only feature to hide windows from screen capture/recording
 - **System Prompt Management** - Save, edit, and activate reusable system prompts
+- **Audio Transcription** - Record microphone audio and transcribe using `/v1/audio/transcriptions` endpoint
 
 ## Core Architecture
 
@@ -15,11 +16,34 @@ Interview Life Saver is an Electron + React application designed to help users d
 - Makes application invisible to screen recording tools while remaining visible to user
 - Controlled via tray menu, control bar toggle, and global shortcuts (Alt+Shift+O for click-through, Alt+Shift+S for stealth)
 
-### Gemini LLM Integration
-- API key stored persistently in `userData/api-key.json`
-- Free tier models: gemini-2.5-flash, gemini-2.5-flash-lite, gemini-2.0-flash, gemini-2.0-flash-lite
-- Chat context includes system prompts when active
-- Model selection via control bar or `/set-model` command
+### Local LLM Integration (OpenAI-compatible API)
+- **LLM Host**: Configurable via `LLM_host` env var (default: `http://127.0.0.1:31415`)
+- **API Key**: Stored persistently in `userData/api-key.json`. `LLM_API_KEY` env var priority over `GEMINI_API_KEY`.
+- The application sends requests to `${LLM_HOST}/v1/chat/completions` with OpenAI format:
+  - Headers: `Authorization: Bearer ${LLM_API_KEY}`, `Content-Type: application/json`
+  - Body JSON: `{ "model": "auto", "messages": [{ "role": "user", "content": "Hello" }] }`
+  - Model can be `"auto"` or any custom model name - selected via control bar
+- Response extracts `data.choices[0].message.content`
+- Free tier models are not restricted - any model name can be used with the custom endpoint
+- System prompts prepended as `System: {content}\n` to every request
+
+**API Key priority**: `USER_API_KEY` (saved) > `process.env.LLM_API_KEY` (env) > `process.env.GEMINI_API_KEY` (env)
+
+**IPC handlers** (all in `src/main/index.ts`):
+- `chatbot:ask-mcp` - Send prompt to local LLM, get response
+- `chatbot:set-model` / `chatbot:get-model` - Model management
+- `chatbot:set-api-key` / `chatbot:get-api-key` - Key management (masked display)
+- `chatbot:transcribe-audio` - Transcribe recorded audio to text
+
+**Request format** (text): `{ model: "auto", messages: [{ role: "user", content: "Hello" }] }`
+**Response**: Extract `data.choices[0].message.content`
+
+**Renderer integration** (via `window.api.chatbot`):
+- `askMcp(prompt)` - Send text/prompt to LLM
+- `setModel(modelId)` - Change model
+- `getModel()` - Get current model
+- `getApiKey()` - Get status (hasKey, maskedKey)
+- `transcribeAudio(data)` - Send audio buffer for transcription (`{ audioBuffer, mimeType }`)
 
 ### Room/WebSocket Mode
 - Connect to configurable WS URL (default: `wss://websocket-23q5.onrender.com`)
@@ -70,7 +94,7 @@ Interview Life Saver is an Electron + React application designed to help users d
 -   **Main Files**:
     -   `index.ts`: The primary entry point. It handles app lifecycle events, creates the main `BrowserWindow`, sets up global shortcuts, creates the tray icon, and manages all IPC (Inter-Process Communication) handlers.
     -   `config.ts`: Loads and exports configuration variables (like API keys and WebSocket URLs) from environment variables (`.env` file).
--   **Dependencies**: `electron`, `@electron-toolkit/utils`, `node-fetch` (for Gemini API), `ws` (for WebSocket), and the local `window-utils` native addon.
+-   **Dependencies**: `electron`, `@electron-toolkit/utils`, `ws` (for WebSocket), and the local `window-utils` native addon.
 
 ### b. Preload Script (`src/preload`)
 
@@ -105,9 +129,10 @@ Interview Life Saver is an Electron + React application designed to help users d
 -   **Application Entry Point**: `src/main/index.ts` is the main entry point specified in `package.json`.
 -   **UI Entry Point**: `src/renderer/src/main.tsx` renders the main React `App` component into `src/renderer/index.html`.
 -   **API Routes / IPC Handlers**: The main process (`src/main/index.ts`) defines numerous IPC handlers that serve as the "API" for the renderer process. Key handlers include:
-    -   `chatbot:ask-mcp`: Sends a prompt to the Gemini LLM.
-    -   `chatbot:set-model`, `chatbot:get-model`: Manages the Gemini model version.
-    -   `chatbot:set-api-key`, `chatbot:get-api-key`: Manages the user's API key.
+    -   `chatbot:ask-mcp` - Send prompt to local LLM, get response
+    -   `chatbot:set-model` / `chatbot:get-model` - Model management
+    -   `chatbot:set-api-key` / `chatbot:get-api-key` - Key management (masked display)
+    -   `chatbot:transcribe-audio` - Transcribe recorded audio to text via `/v1/audio/transcriptions`
     -   `room:*`: A set of handlers for connecting, disconnecting, and sending messages via WebSocket.
     -   `main:*` and `overlay:*`: Handlers for controlling window properties like opacity, size, and click-through state.
     -   `main:hide-from-capture`, `main:show-in-capture`: Triggers the native addon to control screen capture visibility.
@@ -116,10 +141,11 @@ Interview Life Saver is an Electron + React application designed to help users d
 
 The application does not use a traditional database. Data is persisted in a few different ways:
 
--   **API Key**: The user's Gemini API key is stored in a JSON file (`api-key.json`) within the application's user data directory (`app.getPath('userData')`). This provides persistence across sessions.
+-   **API Key**: The user's LLM API key is stored in a JSON file (`api-key.json`) within the application's user data directory (`app.getPath('userData')`). This provides persistence across sessions. Key priority: `USER_API_KEY` (saved) > `process.env.LLM_API_KEY` (env) > `process.env.GEMINI_API_KEY` (env).
 -   **System Prompts**: Custom system prompts are saved to the browser's `localStorage`.
--   **Configuration**: Default configuration (like the WebSocket URL) is managed in `src/main/config.ts` and can be overridden by environment variables.
+-   **Configuration**: Default configuration (like the WebSocket URL and `LLM_host`) is managed in `src/main/config.ts` and can be overridden by environment variables.
 -   **In-Memory**: Conversation history for the LLM chat is stored in memory and is reset when the application is reloaded.
+-   **Audio Transcription**: Recorded audio is sent to `${LLM_HOST}/v1/audio/transcriptions` (via IPC `chatbot:transcribe-audio`) for speech-to-text conversion. Transcribed text is placed directly into the chat input.
 
 ## 5. Dependencies Graph
 
@@ -147,7 +173,6 @@ graph TD
     end
 
     subgraph External Services
-        GeminiAPI["Google Gemini API"]
         WebSocketServer["WebSocket Server"]
     end
 
@@ -190,11 +215,7 @@ graph TD
 
 **API key priority**: `USER_API_KEY` (saved) > `process.env.GEMINI_API_KEY` (env)
 
-**Model validation** (free tier only):
-- `gemini-2.5-flash` (default)
-- `gemini-2.5-flash-lite`
-- `gemini-2.0-flash`
-- `gemini-2.0-flash-lite`
+**Model**: Any model name supported by the configured `LLM_HOST` endpoint. Use `"auto"` as default model name, or specify any custom model string (e.g., `"gpt-4"`, `"claude-3"`, etc.). The model name is passed to the LLM in the request body - the receiving endpoint interprets it.
 
 **IPC handlers** (all in `src/main/index.ts`):
 - `chatbot:ask-mcp` - Send prompt, get Gemini response
@@ -231,7 +252,7 @@ graph TD
 **Storage**: `localStorage.systemPrompts` → array of `{id, name, content}`
 **Active**: `localStorage.activePromptId`
 
-**Integration with LLM**: When `activePromptId` is set, system prompt content is prepended as `System: {content}\n` to every Gemini request.
+**Integration with LLM**: When `activePromptId` is set, system prompt content is prepended as `System: {content}\n` to every LLM request.
 
 **UI**: Accessible from ControlBar ⚙️ button, or dispatch `open-system-prompt-modal` event.
 
@@ -245,7 +266,7 @@ graph TD
 - Global `Window.api` and `Window.electron` interfaces
 
 ### Error Handling
-- All Gemini IPC calls wrapped in try/catch
+- All LLM IPC calls wrapped in try/catch
 - Fallback: `"Error contacting local LLM"`
 - API key save/load with UI error states
 - Graceful degradation when APIs unavailable
@@ -287,7 +308,7 @@ npm run build:win    # Creates installer in dist/win-unpacked/
 **Configuration**:
 - `electron-builder.yml` - NSIS installer, codesigning, platforms
 - `dotenv` loaded in both main and renderer
-- Env vars: `GEMINI_API_KEY`, `WS_URL`
+- Env vars: `LLM_host`, `LLM_API_KEY`, `GEMINI_API_KEY`, `WS_URL`
 
 **Native addon build**:
 ```bash

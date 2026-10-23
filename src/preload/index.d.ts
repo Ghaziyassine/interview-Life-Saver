@@ -33,6 +33,7 @@ declare global {
         getModel: () => Promise<{ model: string }>
         setApiKey: (apiKey: string) => Promise<{ success: boolean }>
         getApiKey: () => Promise<{ hasKey: boolean; maskedKey: string }>
+        transcribeAudio: (data: { audioBuffer: ArrayBuffer | string; mimeType: string }) => Promise<{ success: boolean; text?: string; error?: string }>
       }
       room: {
         connect: () => Promise<{ success: boolean }>

@@ -33,6 +33,7 @@ const chatbotAPI = {
   getModel: () => ipcRenderer.invoke('chatbot:get-model'),
   setApiKey: (apiKey) => ipcRenderer.invoke('chatbot:set-api-key', apiKey),
   getApiKey: () => ipcRenderer.invoke('chatbot:get-api-key'),
+  transcribeAudio: (data) => ipcRenderer.invoke('chatbot:transcribe-audio', data),
 }
 
 const roomAPI = {

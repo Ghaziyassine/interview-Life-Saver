@@ -37,6 +37,7 @@ declare global {
         askMcp: (prompt: any) => Promise<any>
         setModel: (model: string) => Promise<{ success: boolean, model: string, error?: string }>
         getModel: () => Promise<{ model: string }>
+        transcribeAudio: (data: { audioBuffer: ArrayBuffer | string; mimeType: string }) => Promise<{ success: boolean; text?: string; error?: string }>;
       }
       room: {
         connect: () => Promise<{ success: boolean }>

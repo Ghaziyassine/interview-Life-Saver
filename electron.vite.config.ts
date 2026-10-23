@@ -10,7 +10,9 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
+      'process.env.LLM_HOST': JSON.stringify(process.env.LLM_HOST || process.env.LLM_host),
+      'process.env.LLM_API_KEY': JSON.stringify(process.env.LLM_API_KEY)
     }
   },
   preload: {
@@ -24,7 +26,9 @@ export default defineConfig({
     },
     plugins: [react()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
+      'process.env.LLM_HOST': JSON.stringify(process.env.LLM_HOST || process.env.LLM_host),
+      'process.env.LLM_API_KEY': JSON.stringify(process.env.LLM_API_KEY)
     }
   }
 })

@@ -557,6 +557,12 @@ function ChatOverlay() {
   // System prompt modal state
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
 
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -821,6 +827,83 @@ function ChatOverlay() {
     }
   };
 
+  // Start audio recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Stop all tracks in stream
+        stream.getTracks().forEach((track) => track.stop());
+
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+        if (audioBlob.size === 0) {
+          setIsTranscribing(false);
+          return;
+        }
+
+        setIsTranscribing(true);
+        try {
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          let res: any;
+          if (window.electron?.ipcRenderer?.invoke) {
+            res = await window.electron.ipcRenderer.invoke('chatbot:transcribe-audio', {
+              audioBuffer: arrayBuffer,
+              mimeType,
+            });
+          } else if (window.api?.chatbot?.transcribeAudio) {
+            res = await window.api.chatbot.transcribeAudio({
+              audioBuffer: arrayBuffer,
+              mimeType,
+            });
+          }
+
+          if (res?.success && res?.text) {
+            setInput((prev) => (prev ? `${prev} ${res.text}` : res.text));
+          } else if (res?.error) {
+            const errorMessageId = generateMessageId();
+            const errText = `Transcription failed: ${res.error}`;
+            conversationHistory.current.push({ text: errText, from: 'bot', id: errorMessageId });
+            setMessages(prev => [...prev, { text: errText, from: 'bot', id: errorMessageId }]);
+          }
+        } catch (err: any) {
+          console.error('Failed to process audio:', err);
+          const errorMessageId = generateMessageId();
+          conversationHistory.current.push({ text: 'Transcription Error: ' + (err?.message || String(err)), from: 'bot', id: errorMessageId });
+          setMessages(prev => [...prev, { text: 'Transcription Error: ' + (err?.message || String(err)), from: 'bot', id: errorMessageId }]);
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err: any) {
+      console.error('Error starting audio recording:', err);
+      const errorMessageId = generateMessageId();
+      conversationHistory.current.push({ text: 'Error: Microphone access denied or not available.', from: 'bot', id: errorMessageId });
+      setMessages(prev => [...prev, { text: 'Error: Microphone access denied or not available.', from: 'bot', id: errorMessageId }]);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
   return (
     <div style={{
       position: 'absolute',
@@ -977,6 +1060,7 @@ function ChatOverlay() {
           background: 'rgba(30,30,40,0.96)',
           borderTop: '1px solid #333',
           alignItems: 'center',
+          pointerEvents: 'auto',
         }}
         autoComplete="off"
       >
@@ -1032,6 +1116,46 @@ function ChatOverlay() {
           }}
         >
           <span style={{ fontSize: 18 }}>📸</span>
+        </button>
+        <button
+          type="button"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: isRecording ? '#ff4d4d' : 'rgba(45,140,255,0.10)',
+            borderRadius: 8,
+            border: isRecording ? '2px solid #ff4d4d' : '1.5px solid #2d8cff33',
+            padding: '6px 10px',
+            cursor: 'pointer',
+            color: isRecording ? '#ff4d4d' : '#7ecfff',
+            fontWeight: 600,
+            fontSize: '1em',
+            transition: 'background 0.2s',
+          }}
+          title={isRecording ? 'Click to stop recording' : 'Click to record audio for transcription'}
+          onClick={() => {
+            if (isRecording) {
+              stopRecording();
+            } else {
+              startRecording();
+            }
+          }}
+        >
+          {isRecording ? (
+            <span style={{ fontSize: 18 }}>🛑</span>
+          ) : (
+            <span style={{ fontSize: 18 }}>🎙️</span>
+          )}
+          {isRecording && (
+            <span style={{ fontSize: 0.8, marginLeft: 4, color: '#ff4d4d' }}>Recording...</span>
+          )}
+          {!isRecording && !isTranscribing && (
+            <span style={{ fontSize: 0.8, marginLeft: 4 }}>Tap to record</span>
+          )}
+          {isTranscribing && (
+            <span style={{ fontSize: 0.8, marginLeft: 4, color: '#7ecfff' }}>Transcribing...</span>
+          )}
         </button>
         <input
           type="text"
