@@ -488,6 +488,8 @@ ipcMain.handle('chatbot:get-model', () => {
 
 // --- User-configured API key (persisted to userData) ---
 const API_KEY_FILE = join(app.getPath('userData'), 'api-key.json');
+const GEMINI_API_KEY_FILE = join(app.getPath('userData'), 'gemini-api-key.json');
+const LLM_HOST_FILE = join(app.getPath('userData'), 'llm-host.json');
 
 function loadApiKey(): string {
   try {
@@ -509,7 +511,49 @@ function saveApiKey(key: string): void {
   }
 }
 
+function loadGeminiApiKey(): string {
+  try {
+    if (existsSync(GEMINI_API_KEY_FILE)) {
+      const data = JSON.parse(readFileSync(GEMINI_API_KEY_FILE, 'utf-8'));
+      return data.apiKey || '';
+    }
+  } catch (err) {
+    console.error('Failed to load Gemini API key:', err);
+  }
+  return '';
+}
+
+function saveGeminiApiKey(key: string): void {
+  try {
+    writeFileSync(GEMINI_API_KEY_FILE, JSON.stringify({ apiKey: key }), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save Gemini API key:', err);
+  }
+}
+
+function loadLLMHost(): string {
+  try {
+    if (existsSync(LLM_HOST_FILE)) {
+      const data = JSON.parse(readFileSync(LLM_HOST_FILE, 'utf-8'));
+      return data.llmHost || '';
+    }
+  } catch (err) {
+    console.error('Failed to load LLM host:', err);
+  }
+  return '';
+}
+
+function saveLLMHost(host: string): void {
+  try {
+    writeFileSync(LLM_HOST_FILE, JSON.stringify({ llmHost: host }), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save LLM host:', err);
+  }
+}
+
 let USER_API_KEY = loadApiKey();
+let USER_GEMINI_API_KEY = loadGeminiApiKey();
+let USER_LLM_HOST = loadLLMHost();
 
 function getEffectiveApiKey(): string {
   if (CONFIG.LLM_API_KEY && CONFIG.LLM_API_KEY.trim() && CONFIG.LLM_API_KEY !== 'your_api_key_here') {
@@ -518,16 +562,43 @@ function getEffectiveApiKey(): string {
   if (USER_API_KEY && USER_API_KEY.trim() && USER_API_KEY !== 'your_api_key_here') {
     return USER_API_KEY.trim();
   }
+  if (USER_GEMINI_API_KEY && USER_GEMINI_API_KEY.trim() && USER_GEMINI_API_KEY !== 'your_api_key_here') {
+    return USER_GEMINI_API_KEY.trim();
+  }
   if (CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY.trim() && CONFIG.GEMINI_API_KEY !== 'your_api_key_here') {
     return CONFIG.GEMINI_API_KEY.trim();
   }
   return '';
 }
 
-// IPC handler to set the API key
+function getEffectiveGeminiApiKey(): string {
+  if (CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY.trim() && CONFIG.GEMINI_API_KEY !== 'your_api_key_here') {
+    return CONFIG.GEMINI_API_KEY.trim();
+  }
+  if (USER_GEMINI_API_KEY && USER_GEMINI_API_KEY.trim() && USER_GEMINI_API_KEY !== 'your_api_key_here') {
+    return USER_GEMINI_API_KEY.trim();
+  }
+  return '';
+}
+
+function getEffectiveLLMHost(): string {
+  if (USER_LLM_HOST && USER_LLM_HOST.trim() && USER_LLM_HOST !== 'your_llm_host_here') {
+    return USER_LLM_HOST.trim();
+  }
+  return CONFIG.LLM_HOST || 'http://127.0.0.1:31415';
+}
+
+// IPC handler to set the API key (for Free LLM)
 ipcMain.handle('chatbot:set-api-key', (_event, apiKey: string) => {
   USER_API_KEY = apiKey.trim();
   saveApiKey(USER_API_KEY);
+  return { success: true };
+});
+
+// IPC handler to set the Gemini API key
+ipcMain.handle('chatbot:set-gemini-api-key', (_event, apiKey: string) => {
+  USER_GEMINI_API_KEY = apiKey.trim();
+  saveGeminiApiKey(USER_GEMINI_API_KEY);
   return { success: true };
 });
 
@@ -541,9 +612,100 @@ ipcMain.handle('chatbot:get-api-key', () => {
   return { hasKey: true, maskedKey: masked };
 });
 
+// IPC handler to get the Gemini API key (masked for security)
+ipcMain.handle('chatbot:get-gemini-api-key', () => {
+  const key = getEffectiveGeminiApiKey();
+  if (!key) return { hasKey: false, maskedKey: '' };
+  const masked = key.length > 8
+    ? key.slice(0, 4) + '\u2022'.repeat(key.length - 8) + key.slice(-4)
+    : '\u2022'.repeat(key.length);
+  return { hasKey: true, maskedKey: masked };
+});
+
+// IPC handler to set the LLM host
+ipcMain.handle('chatbot:set-llm-host', (_event, llmHost: string) => {
+  USER_LLM_HOST = llmHost.trim();
+  saveLLMHost(USER_LLM_HOST);
+  return { success: true };
+});
+
+// IPC handler to get the LLM host
+ipcMain.handle('chatbot:get-llm-host', () => {
+  const host = getEffectiveLLMHost();
+  return { host };
+});
+
+// Helper to check if model is a Gemini model
+function isGeminiModel(model: string): boolean {
+  return model.startsWith('gemini-');
+}
+
+// Helper to call Google Gemini API
+async function callGeminiAPI(model: string, messages: any[], apiKey: string) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Convert OpenAI messages format to Gemini format
+  const contents = messages.map(msg => {
+    const parts: any[] = [];
+    if (msg.content) {
+      if (typeof msg.content === 'string') {
+        parts.push({ text: msg.content });
+      } else if (Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (part.type === 'text') {
+            parts.push({ text: part.text });
+          } else if (part.type === 'image_url') {
+            // Extract base64 from data URL
+            const url = part.image_url?.url;
+            if (url && url.startsWith('data:')) {
+              const [mimePart, base64] = url.split(',');
+              const mimeType = mimePart.replace('data:', '').replace(';base64', '');
+              parts.push({
+                inlineData: {
+                  mimeType,
+                  data: base64
+                }
+              });
+            }
+          }
+        }
+      }
+    }
+    return {
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts
+    };
+  });
+
+  const body = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+    }
+  };
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    return { success: false, error: `Gemini API error: ${res.status} ${res.statusText} - ${errorText}` };
+  }
+
+  const data = await res.json();
+  const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+
+  return { success: true, answer };
+}
+
 ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
-  const LLM_HOST = (CONFIG.LLM_HOST || process.env.LLM_host || 'http://127.0.0.1:31415').replace(/\/+$/, '');
+  const LLM_HOST = getEffectiveLLMHost().replace(/\/+$/, '');
   const LLM_API_KEY = getEffectiveApiKey();
+  const GEMINI_API_KEY = getEffectiveGeminiApiKey();
 
   try {
     let messages: any[] = [];
@@ -580,6 +742,26 @@ ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
       }
     } else {
       return { success: false, error: 'Invalid request payload.' };
+    }
+
+    // If model is "auto", use the default model for the current API type
+    if (model === 'auto') {
+      model = 'auto';
+    }
+
+    // Check if we should use Gemini API
+    const useGemini = isGeminiModel(model);
+
+    if (useGemini) {
+      if (!GEMINI_API_KEY) {
+        return { success: false, error: 'No Gemini API key configured. Please add a Gemini API key in settings.' };
+      }
+      return await callGeminiAPI(model, messages, GEMINI_API_KEY);
+    }
+
+    // Use Free LLM (OpenAI-compatible) API
+    if (!LLM_API_KEY) {
+      return { success: false, error: 'No Free LLM API key configured. Please add an API key in settings.' };
     }
 
     const endpoint = `${LLM_HOST}/v1/chat/completions`;
@@ -625,57 +807,100 @@ ipcMain.handle('chatbot:ask-mcp', async (_event, payload: any) => {
   }
 });
 
-ipcMain.handle('chatbot:transcribe-audio', async (_event, data: { audioBuffer: ArrayBuffer | string; mimeType: string }) => {
-  const LLM_HOST = (CONFIG.LLM_HOST || process.env.LLM_host || 'http://127.0.0.1:31415').replace(/\/+$/, '');
+ipcMain.handle('chatbot:transcribe-audio', async (_event, data: { audioBuffer: string; mimeType: string }) => {
+  const LLM_HOST = getEffectiveLLMHost().replace(/\/+$/, '');
   const LLM_API_KEY = getEffectiveApiKey();
   const endpoint = `${LLM_HOST}/v1/audio/transcriptions`;
 
+  // Debug logging
+  console.log('[Transcription] Endpoint:', endpoint);
+  console.log('[Transcription] Has API key:', !!LLM_API_KEY);
+  console.log('[Transcription] API key preview:', LLM_API_KEY ? `${LLM_API_KEY.slice(0, 8)}...` : 'none');
+
   try {
-    let buffer: Buffer;
-    if (typeof data.audioBuffer === 'string') {
-      buffer = Buffer.from(data.audioBuffer, 'base64');
-    } else if (data.audioBuffer instanceof ArrayBuffer) {
-      buffer = Buffer.from(data.audioBuffer);
-    } else if (Buffer.isBuffer(data.audioBuffer)) {
-      buffer = data.audioBuffer;
-    } else {
-      return { success: false, error: 'Invalid audio buffer received.' };
-    }
+    // Expect base64 string from renderer
+    const buffer = Buffer.from(data.audioBuffer, 'base64');
+    console.log('[Transcription] Audio buffer size:', buffer.length, 'bytes');
 
-    const mimeType = data.mimeType || 'audio/webm';
-    let ext = 'webm';
-    if (mimeType.includes('wav')) ext = 'wav';
-    else if (mimeType.includes('mp3')) ext = 'mp3';
-    else if (mimeType.includes('ogg')) ext = 'ogg';
-    else if (mimeType.includes('m4a')) ext = 'm4a';
+    // Manually construct multipart/form-data to avoid Node.js fetch + FormData + headers bug
+    // Node.js undici fetch breaks multipart boundary when headers object is passed with FormData
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2, 15);
+    const CRLF = '\r\n';
 
-    const formData = new FormData();
-    const fileBlob = new Blob([buffer], { type: mimeType });
-    formData.append('file', fileBlob, `recording.${ext}`);
-    formData.append('model', 'auto');
+    // model field
+    const modelPart =
+      `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="model"${CRLF}${CRLF}` +
+      `auto${CRLF}`;
 
-    const headers: Record<string, string> = {};
-    if (LLM_API_KEY) {
+    // file field
+    const fileHeader =
+      `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="file"; filename="speech.webm"${CRLF}` +
+      `Content-Type: audio/webm${CRLF}${CRLF}`;
+
+    const fileFooter = CRLF;
+    const closingBoundary = `--${boundary}--${CRLF}`;
+
+    // Build complete body as Buffer
+    const bodyBuffers = [
+      Buffer.from(modelPart, 'utf-8'),
+      Buffer.from(fileHeader, 'utf-8'),
+      buffer,
+      Buffer.from(fileFooter, 'utf-8'),
+      Buffer.from(closingBoundary, 'utf-8')
+    ];
+
+    const fullBody = Buffer.concat(bodyBuffers);
+    console.log('[Transcription] Multipart body size:', fullBody.length, 'bytes, boundary:', boundary);
+
+    // Send with manually set Content-Type including boundary, plus Authorization header
+    const headers: Record<string, string> = {
+      'Content-Type': `multipart/form-data; boundary=${boundary}`
+    };
+
+    if (LLM_API_KEY && LLM_API_KEY.length > 0) {
       headers['Authorization'] = `Bearer ${LLM_API_KEY}`;
+      console.log('[Transcription] Adding Authorization header with manual multipart');
     }
 
+    console.log('[Transcription] Sending request with manual multipart...');
     const res = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: formData
+      body: fullBody
     });
+
+    console.log('[Transcription] Response status:', res.status, res.statusText);
 
     if (!res.ok) {
       const errorText = await res.text();
-      return { success: false, error: `Transcription API error: ${res.status} ${res.statusText} - ${errorText}` };
+      console.error('[Transcription] Error response:', errorText);
+      let detailedError = `Transcription API error: ${res.status} ${res.statusText}`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson?.error?.message) {
+          detailedError += ` - ${errorJson.error.message}`;
+        } else if (errorJson?.message) {
+          detailedError += ` - ${errorJson.message}`;
+        } else {
+          detailedError += ` - ${errorText}`;
+        }
+      } catch {
+        detailedError += ` - ${errorText}`;
+      }
+
+      return { success: false, error: detailedError };
     }
 
     const result = await res.json();
+    console.log('[Transcription] Success:', !!result?.text);
     const text = result?.text || result?.transcript || '';
     return { success: true, text };
   } catch (err: any) {
-    console.error('Error during audio transcription:', err);
-    return { success: false, error: err?.message || String(err) };
+    console.error('[Transcription] Network/connection error:', err);
+    return { success: false, error: `Network/connection error: ${err?.message || String(err)}` };
   }
 });
 

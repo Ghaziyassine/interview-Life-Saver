@@ -42,18 +42,28 @@ export function ControlBar({
   // State for screen capture protection
   const [isHiddenFromCapture, setIsHiddenFromCapture] = useState(true);
   const [captureProtectionSupported, setCaptureProtectionSupported] = useState(false);
-  // State for API key configuration
+  // State for Free LLM API key configuration
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeyStatus, setApiKeyStatus] = useState<{ hasKey: boolean; maskedKey: string }>({ hasKey: false, maskedKey: '' });
   const [apiKeySaveMsg, setApiKeySaveMsg] = useState('');
+  // State for Gemini API key configuration
+  const [showGeminiApiKeyInput, setShowGeminiApiKeyInput] = useState(false);
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState('');
+  const [geminiApiKeyStatus, setGeminiApiKeyStatus] = useState<{ hasKey: boolean; maskedKey: string }>({ hasKey: false, maskedKey: '' });
+  const [geminiApiKeySaveMsg, setGeminiApiKeySaveMsg] = useState('');
+  // State for LLM host configuration
+  const [showLLMHostInput, setShowLLMHostInput] = useState(false);
+  const [llmHostInput, setLLMHostInput] = useState('');
+  const [llmHostStatus, setLLMHostStatus] = useState<string>('');
+  const [llmHostSaveMsg, setLLMHostSaveMsg] = useState('');
   // State for LLM model selection
   const [currentModel, setCurrentModel] = useState('auto');
   const [showModelSelector, setShowModelSelector] = useState(false);
 
   // Models available
   const llmModels = [
-    { id: 'auto', name: 'Auto (Default)' },
+    { id: 'auto', name: 'Auto (Free LLM Api)' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite' },
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
@@ -89,6 +99,34 @@ export function ControlBar({
     fetchApiKeyStatus();
   }, []);
 
+  // Fetch LLM host status on mount
+  useEffect(() => {
+    const fetchLLMHostStatus = async () => {
+      try {
+        const chatbotApi = window.api.chatbot as any;
+        const status = await chatbotApi.getLLMHost();
+        setLLMHostStatus(status.host);
+      } catch (err) {
+        console.error('Failed to get LLM host status:', err);
+      }
+    };
+    fetchLLMHostStatus();
+  }, []);
+
+  // Fetch Gemini API key status on mount
+  useEffect(() => {
+    const fetchGeminiApiKeyStatus = async () => {
+      try {
+        const chatbotApi = window.api.chatbot as any;
+        const status = await chatbotApi.getGeminiApiKey();
+        setGeminiApiKeyStatus(status);
+      } catch (err) {
+        console.error('Failed to get Gemini API key status:', err);
+      }
+    };
+    fetchGeminiApiKeyStatus();
+  }, []);
+
   const handleSaveApiKey = async () => {
     try {
       const chatbotApi = window.api.chatbot as any;
@@ -104,6 +142,39 @@ export function ControlBar({
       setTimeout(() => setApiKeySaveMsg(''), 2000);
     }
   };
+
+  const handleSaveGeminiApiKey = async () => {
+    try {
+      const chatbotApi = window.api.chatbot as any;
+      await chatbotApi.setGeminiApiKey(geminiApiKeyInput);
+      const status = await chatbotApi.getGeminiApiKey();
+      setGeminiApiKeyStatus(status);
+      setGeminiApiKeyInput('');
+      setGeminiApiKeySaveMsg('✅ Gemini API key saved!');
+      setTimeout(() => setGeminiApiKeySaveMsg(''), 2000);
+    } catch (err) {
+      console.error('Failed to save Gemini API key:', err);
+      setGeminiApiKeySaveMsg('❌ Failed to save');
+      setTimeout(() => setGeminiApiKeySaveMsg(''), 2000);
+    }
+  };
+
+  const handleSaveLLMHost = async () => {
+    try {
+      const chatbotApi = window.api.chatbot as any;
+      await chatbotApi.setLLMHost(llmHostInput.trim());
+      const status = await chatbotApi.getLLMHost();
+      setLLMHostStatus(status.host);
+      setLLMHostInput('');
+      setLLMHostSaveMsg('✅ LLM Host saved!');
+      setTimeout(() => setLLMHostSaveMsg(''), 2000);
+    } catch (err) {
+      console.error('Failed to save LLM Host:', err);
+      setLLMHostSaveMsg('❌ Failed to save');
+      setTimeout(() => setLLMHostSaveMsg(''), 2000);
+    }
+  };
+
   // Check if screen capture protection is supported on this platform
   useEffect(() => {
     const checkCaptureState = async () => {
@@ -362,7 +433,7 @@ export function ControlBar({
             🤖 System Prompt
           </button>
 
-          {/* API Key Configuration */}
+          {/* Free LLM API Key Configuration */}
           <button
             onClick={() => setShowApiKeyInput(!showApiKeyInput)}
             style={{
@@ -380,7 +451,7 @@ export function ControlBar({
               alignItems: 'center',
             }}
           >
-            <span>🔑 API Key {apiKeyStatus.hasKey ? '(configured)' : '(not set)'}</span>
+            <span>🔑 Free LLM API Key {apiKeyStatus.hasKey ? '(configured)' : '(not set)'}</span>
             <span>{showApiKeyInput ? '▲' : '▼'}</span>
           </button>
 
@@ -400,7 +471,7 @@ export function ControlBar({
               )}
               <input
                 type="password"
-                placeholder="Enter your LLM API key"
+                placeholder="Enter your Free LLM API key"
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -441,6 +512,90 @@ export function ControlBar({
                 )}
               </div>
               <div style={{ fontSize: 11, color: '#888' }}>
+                Get your key from your LLM provider (e.g., local AI server, OpenAI-compatible endpoint)
+              </div>
+            </div>
+          )}
+
+          {/* Gemini API Key Configuration (for Gemini models) */}
+          <button
+            onClick={() => setShowGeminiApiKeyInput(!showGeminiApiKeyInput)}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>🔑 Gemini API Key {geminiApiKeyStatus.hasKey ? '(configured)' : '(not set)'}</span>
+            <span>{showGeminiApiKeyInput ? '▲' : '▼'}</span>
+          </button>
+
+          {showGeminiApiKeyInput && (
+            <div style={{
+              padding: '0.5em 0 0.5em 1em',
+              marginBottom: '0.5em',
+              borderLeft: '2px solid #444',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              {geminiApiKeyStatus.hasKey && (
+                <div style={{ fontSize: 12, color: '#aaa', fontFamily: 'monospace' }}>
+                  Current: {geminiApiKeyStatus.maskedKey}
+                </div>
+              )}
+              <input
+                type="password"
+                placeholder="Enter your Gemini API key"
+                value={geminiApiKeyInput}
+                onChange={(e) => setGeminiApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && geminiApiKeyInput.trim()) handleSaveGeminiApiKey();
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  color: '#fff',
+                  border: '1px solid #555',
+                  borderRadius: 8,
+                  padding: '0.4em 0.6em',
+                  fontSize: 13,
+                  outline: 'none',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={handleSaveGeminiApiKey}
+                  disabled={!geminiApiKeyInput.trim()}
+                  style={{
+                    background: geminiApiKeyInput.trim() ? '#2d8cff' : '#555',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '0.3em 1em',
+                    fontSize: 13,
+                    cursor: geminiApiKeyInput.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Save
+                </button>
+                {geminiApiKeySaveMsg && (
+                  <span style={{ fontSize: 12, color: geminiApiKeySaveMsg.startsWith('✅') ? '#4caf50' : '#f44336' }}>
+                    {geminiApiKeySaveMsg}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: '#888' }}>
                 Get your key at{' '}
                 <span
                   style={{ color: '#2d8cff', cursor: 'pointer', textDecoration: 'underline' }}
@@ -450,6 +605,90 @@ export function ControlBar({
                 >
                   aistudio.google.com/apikey
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* LLM Host Configuration */}
+          <button
+            onClick={() => setShowLLMHostInput(!showLLMHostInput)}
+            style={{
+              background: 'none',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '0.5em 0',
+              fontSize: 16,
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>🌐 LLM Host {llmHostStatus ? '(configured)' : '(default: localhost:31415)'}</span>
+            <span>{showLLMHostInput ? '▲' : '▼'}</span>
+          </button>
+
+          {showLLMHostInput && (
+            <div style={{
+              padding: '0.5em 0 0.5em 1em',
+              marginBottom: '0.5em',
+              borderLeft: '2px solid #444',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}>
+              {llmHostStatus && (
+                <div style={{ fontSize: 12, color: '#aaa', fontFamily: 'monospace' }}>
+                  Current: {llmHostStatus}
+                </div>
+              )}
+              <input
+                type="text"
+                placeholder="Enter LLM API endpoint (e.g., http://localhost:31415)"
+                value={llmHostInput}
+                onChange={(e) => setLLMHostInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && llmHostInput.trim()) handleSaveLLMHost();
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  color: '#fff',
+                  border: '1px solid #555',
+                  borderRadius: 8,
+                  padding: '0.4em 0.6em',
+                  fontSize: 13,
+                  outline: 'none',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={handleSaveLLMHost}
+                  disabled={!llmHostInput.trim()}
+                  style={{
+                    background: llmHostInput.trim() ? '#2d8cff' : '#555',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '0.3em 1em',
+                    fontSize: 13,
+                    cursor: llmHostInput.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Save
+                </button>
+                {llmHostSaveMsg && (
+                  <span style={{ fontSize: 12, color: llmHostSaveMsg.startsWith('✅') ? '#4caf50' : '#f44336' }}>
+                    {llmHostSaveMsg}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: '#888' }}>
+                Default: <code style={{ color: '#2d8cff' }}>http://localhost:31415</code>
               </div>
             </div>
           )}

@@ -33,6 +33,10 @@ const chatbotAPI = {
   getModel: () => ipcRenderer.invoke('chatbot:get-model'),
   setApiKey: (apiKey) => ipcRenderer.invoke('chatbot:set-api-key', apiKey),
   getApiKey: () => ipcRenderer.invoke('chatbot:get-api-key'),
+  setGeminiApiKey: (apiKey) => ipcRenderer.invoke('chatbot:set-gemini-api-key', apiKey),
+  getGeminiApiKey: () => ipcRenderer.invoke('chatbot:get-gemini-api-key'),
+  setLLMHost: (llmHost) => ipcRenderer.invoke('chatbot:set-llm-host', llmHost),
+  getLLMHost: () => ipcRenderer.invoke('chatbot:get-llm-host'),
   transcribeAudio: (data) => ipcRenderer.invoke('chatbot:transcribe-audio', data),
 }
 

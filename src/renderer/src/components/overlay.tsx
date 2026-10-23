@@ -832,7 +832,8 @@ function ChatOverlay() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      // Use explicit 'audio/webm' type like the working example
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -845,8 +846,8 @@ function ChatOverlay() {
         // Stop all tracks in stream
         stream.getTracks().forEach((track) => track.stop());
 
-        const mimeType = mediaRecorder.mimeType || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        // Use explicit 'audio/webm' like the working example
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
 
         if (audioBlob.size === 0) {
           setIsTranscribing(false);
@@ -855,17 +856,21 @@ function ChatOverlay() {
 
         setIsTranscribing(true);
         try {
+          // Convert blob to base64 string for IPC (similar to the working example's FormData approach)
           const arrayBuffer = await audioBlob.arrayBuffer();
+          // Use browser-compatible base64 encoding
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
           let res: any;
           if (window.electron?.ipcRenderer?.invoke) {
             res = await window.electron.ipcRenderer.invoke('chatbot:transcribe-audio', {
-              audioBuffer: arrayBuffer,
-              mimeType,
+              audioBuffer: base64,  // Send as base64 string
+              mimeType: 'audio/webm',
             });
           } else if (window.api?.chatbot?.transcribeAudio) {
             res = await window.api.chatbot.transcribeAudio({
-              audioBuffer: arrayBuffer,
-              mimeType,
+              audioBuffer: base64,
+              mimeType: 'audio/webm',
             });
           }
 
